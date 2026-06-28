@@ -32,12 +32,12 @@ from fastapi.security import OAuth2PasswordRequestForm
 from PIL import Image
 
 from auth import (
+    VALID_ROLES,
     create_access_token,
     get_current_user,
     hash_password,
     require_role,
     verify_password,
-    VALID_ROLES,
 )
 from database import patients_collection, users_collection
 from model_I import CLASS_THRESHOLDS, classification_model
@@ -97,7 +97,7 @@ def health():
     return {
         "status": "ok",
         "device": "cuda" if torch.cuda.is_available() else "cpu",
-        "model_I_loaded": classification_model.model is not None,
+        "model_I_loaded_classes": list(classification_model.models.keys()),
         "model_II_loaded": report_model.model is not None,
     }
 
@@ -112,7 +112,9 @@ async def register(user: UserCreate):
     creazione di account andrebbe limitata a un amministratore.
     """
     if user.role not in VALID_ROLES:
-        raise HTTPException(status_code=400, detail=f"Ruolo deve essere uno di: {VALID_ROLES}")
+        raise HTTPException(
+            status_code=400, detail=f"Ruolo deve essere uno di: {VALID_ROLES}"
+        )
 
     existing = await users_collection.find_one({"username": user.username})
     if existing:
@@ -166,7 +168,9 @@ async def create_patient(
             img = Image.open(io.BytesIO(content))
             img.load()
         except Exception:
-            raise HTTPException(status_code=400, detail=f"File non valido: {f.filename}")
+            raise HTTPException(
+                status_code=400, detail=f"File non valido: {f.filename}"
+            )
         images.append(img)
 
     patient_doc = {
@@ -275,7 +279,9 @@ async def get_slice(
 # RF2 — Classificazione (Modello I)
 # ---------------------------------------------------------------------------
 @app.post("/patients/{patient_id}/classify", response_model=ClassificationResponse)
-async def classify_patient(patient_id: str, current_user: dict = Depends(get_current_user)):
+async def classify_patient(
+    patient_id: str, current_user: dict = Depends(get_current_user)
+):
     p = await patients_collection.find_one({"_id": oid(patient_id)})
     if p is None:
         raise HTTPException(status_code=404, detail="Paziente non trovato")
@@ -285,7 +291,9 @@ async def classify_patient(patient_id: str, current_user: dict = Depends(get_cur
     try:
         probs = classification_model.predict(images)
     except NotImplementedError as e:
-        raise HTTPException(status_code=501, detail=f"Modello I non ancora collegato: {e}")
+        raise HTTPException(
+            status_code=501, detail=f"Modello I non ancora collegato: {e}"
+        )
     except Exception as e:
         logger.exception("Errore inferenza Modello I")
         raise HTTPException(status_code=500, detail=str(e))
@@ -305,17 +313,26 @@ async def classify_patient(patient_id: str, current_user: dict = Depends(get_cur
 
     await patients_collection.update_one(
         {"_id": oid(patient_id)},
-        {"$set": {"findings": [f.model_dump() for f in findings], "no_finding": no_finding}},
+        {
+            "$set": {
+                "findings": [f.model_dump() for f in findings],
+                "no_finding": no_finding,
+            }
+        },
     )
 
-    return ClassificationResponse(patient_id=patient_id, findings=findings, no_finding=no_finding)
+    return ClassificationResponse(
+        patient_id=patient_id, findings=findings, no_finding=no_finding
+    )
 
 
 # ---------------------------------------------------------------------------
 # RF3 — Refertazione (Modello II)
 # ---------------------------------------------------------------------------
 @app.post("/patients/{patient_id}/report", response_model=ReportResponse)
-async def generate_report(patient_id: str, current_user: dict = Depends(get_current_user)):
+async def generate_report(
+    patient_id: str, current_user: dict = Depends(get_current_user)
+):
     p = await patients_collection.find_one({"_id": oid(patient_id)})
     if p is None:
         raise HTTPException(status_code=404, detail="Paziente non trovato")
@@ -345,7 +362,9 @@ async def generate_report(patient_id: str, current_user: dict = Depends(get_curr
 
 
 @app.get("/patients/{patient_id}/coherence", response_model=CoherenceCheckResponse)
-async def check_coherence(patient_id: str, current_user: dict = Depends(get_current_user)):
+async def check_coherence(
+    patient_id: str, current_user: dict = Depends(get_current_user)
+):
     p = await patients_collection.find_one({"_id": oid(patient_id)})
     if p is None:
         raise HTTPException(status_code=404, detail="Paziente non trovato")
@@ -371,7 +390,9 @@ async def check_coherence(patient_id: str, current_user: dict = Depends(get_curr
             )
         )
 
-    return CoherenceCheckResponse(patient_id=patient_id, issues=issues, has_mismatch=has_mismatch)
+    return CoherenceCheckResponse(
+        patient_id=patient_id, issues=issues, has_mismatch=has_mismatch
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -379,7 +400,9 @@ async def check_coherence(patient_id: str, current_user: dict = Depends(get_curr
 # ---------------------------------------------------------------------------
 @app.put("/patients/{patient_id}/report", response_model=ReportResponse)
 async def update_report(
-    patient_id: str, body: ReportUpdateRequest, current_user: dict = Depends(get_current_user)
+    patient_id: str,
+    body: ReportUpdateRequest,
+    current_user: dict = Depends(get_current_user),
 ):
     p = await patients_collection.find_one({"_id": oid(patient_id)})
     if p is None:
@@ -409,19 +432,27 @@ async def validate_patient(
         {"_id": oid(patient_id)},
         {"$set": {"validated": True, "validated_by": current_user["username"]}},
     )
-    return {"patient_id": patient_id, "validated": True, "validated_by": current_user["username"]}
+    return {
+        "patient_id": patient_id,
+        "validated": True,
+        "validated_by": current_user["username"],
+    }
 
 
 # ---------------------------------------------------------------------------
 # RF6.2 — Esportazione referto
 # ---------------------------------------------------------------------------
 @app.get("/patients/{patient_id}/export", response_class=PlainTextResponse)
-async def export_report(patient_id: str, current_user: dict = Depends(get_current_user)):
+async def export_report(
+    patient_id: str, current_user: dict = Depends(get_current_user)
+):
     p = await patients_collection.find_one({"_id": oid(patient_id)})
     if p is None:
         raise HTTPException(status_code=404, detail="Paziente non trovato")
     if not p["report_text"]:
-        raise HTTPException(status_code=400, detail="Nessun referto generato per questo paziente")
+        raise HTTPException(
+            status_code=400, detail="Nessun referto generato per questo paziente"
+        )
 
     findings_str = "\n".join(
         f"- {f['label']}: {f['probability']:.2f} (soglia {f['threshold']})"
