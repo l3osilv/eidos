@@ -14,22 +14,40 @@ from pydantic import BaseModel, Field
 # Utenti / Auth
 # ---------------------------------------------------------------------------
 class UserCreate(BaseModel):
-    username: str
+    nome: str
+    cognome: str
+    gender: str  # "M" | "F"
+    role: str    # "medico" | "specializzando"
     password: str
-    full_name: str
-    role: str  # "medico" | "specializzando"
+    username: Optional[str] = None
 
 
 class UserPublic(BaseModel):
     username: str
-    full_name: str
+    nome: str
+    cognome: str
     role: str
+    gender: str
+    avatar: Optional[str] = None
 
 
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
-    role: str  # comodo per il frontend, evita una chiamata in più
+    role: str
+    gender: str
+    nome: str
+    cognome: str
+    username: str
+    avatar: Optional[str] = None
+
+
+class ProfileUpdate(BaseModel):
+    nome: str
+    cognome: str
+    gender: str
+    avatar: Optional[str] = None
+
 
 
 # ---------------------------------------------------------------------------

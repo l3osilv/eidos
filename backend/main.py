@@ -53,6 +53,7 @@ from schemas import (
     ReportUpdateRequest,
     Token,
     UserCreate,
+    ProfileUpdate,
 )
 from storage import save_patient_images
 
@@ -116,21 +117,36 @@ async def register(user: UserCreate):
             status_code=400, detail=f"Ruolo deve essere uno di: {VALID_ROLES}"
         )
 
-    existing = await users_collection.find_one({"username": user.username})
+    username = user.username
+    if not username:
+        username = f"{user.nome}{user.cognome}".lower().replace(" ", "")
+
+    existing = await users_collection.find_one({"username": username})
     if existing:
         raise HTTPException(status_code=400, detail="Username già in uso")
 
     await users_collection.insert_one(
         {
-            "username": user.username,
+            "username": username,
             "hashed_password": hash_password(user.password),
-            "full_name": user.full_name,
+            "nome": user.nome,
+            "cognome": user.cognome,
+            "gender": user.gender,
             "role": user.role,
+            "avatar": None,
         }
     )
 
-    token = create_access_token({"sub": user.username})
-    return Token(access_token=token, role=user.role)
+    token = create_access_token({"sub": username})
+    return Token(
+        access_token=token,
+        role=user.role,
+        gender=user.gender,
+        nome=user.nome,
+        cognome=user.cognome,
+        username=username,
+        avatar=None
+    )
 
 
 @app.post("/auth/login", response_model=Token)
@@ -140,7 +156,46 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
         raise HTTPException(status_code=401, detail="Username o password errati")
 
     token = create_access_token({"sub": user["username"]})
-    return Token(access_token=token, role=user["role"])
+    return Token(
+        access_token=token,
+        role=user["role"],
+        gender=user.get("gender", "M"),
+        nome=user.get("nome", ""),
+        cognome=user.get("cognome", ""),
+        username=user["username"],
+        avatar=user.get("avatar")
+    )
+
+
+@app.put("/users/profile", response_model=Token)
+async def update_profile(
+    profile: ProfileUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    await users_collection.update_one(
+        {"username": current_user["username"]},
+        {
+            "$set": {
+                "nome": profile.nome,
+                "cognome": profile.cognome,
+                "gender": profile.gender,
+                "avatar": profile.avatar,
+            }
+        }
+    )
+    
+    # Retrieve updated user to return fresh Token
+    updated_user = await users_collection.find_one({"username": current_user["username"]})
+    token = create_access_token({"sub": current_user["username"]})
+    return Token(
+        access_token=token,
+        role=updated_user["role"],
+        gender=updated_user.get("gender", "M"),
+        nome=updated_user.get("nome", ""),
+        cognome=updated_user.get("cognome", ""),
+        username=updated_user["username"],
+        avatar=updated_user.get("avatar")
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -216,18 +271,24 @@ async def create_patient(
 # ---------------------------------------------------------------------------
 # RF6 — Storico pazienti
 # ---------------------------------------------------------------------------
-@app.get("/patients", response_model=List[PatientSummary])
+@app.get("/patients", response_model=List[PatientStatus])
 async def list_patients(current_user: dict = Depends(get_current_user)):
     cursor = patients_collection.find()
     results = []
     async for p in cursor:
         results.append(
-            PatientSummary(
+            PatientStatus(
                 patient_id=str(p["_id"]),
                 nome=p["nome"],
                 cognome=p["cognome"],
+                codice_fiscale=p["codice_fiscale"],
+                data_nascita=date.fromisoformat(p["data_nascita"]),
                 created_at=p["created_at"],
+                num_slices=len(p["image_paths"]),
+                has_classification=p["findings"] is not None,
+                has_report=p["report_text"] is not None,
                 validated=p["validated"],
+                validated_by=p.get("validated_by"),
             )
         )
     return results
@@ -280,11 +341,19 @@ async def get_slice(
 # ---------------------------------------------------------------------------
 @app.post("/patients/{patient_id}/classify", response_model=ClassificationResponse)
 async def classify_patient(
-    patient_id: str, current_user: dict = Depends(get_current_user)
+    patient_id: str, force: bool = False, current_user: dict = Depends(get_current_user)
 ):
     p = await patients_collection.find_one({"_id": oid(patient_id)})
     if p is None:
         raise HTTPException(status_code=404, detail="Paziente non trovato")
+
+    if not force and p.get("findings") is not None:
+        findings = [FindingResult(**f) for f in p["findings"]]
+        return ClassificationResponse(
+            patient_id=patient_id,
+            findings=findings,
+            no_finding=p.get("no_finding", True)
+        )
 
     images = [Image.open(path) for path in p["image_paths"]]
 
@@ -331,11 +400,14 @@ async def classify_patient(
 # ---------------------------------------------------------------------------
 @app.post("/patients/{patient_id}/report", response_model=ReportResponse)
 async def generate_report(
-    patient_id: str, current_user: dict = Depends(get_current_user)
+    patient_id: str, force: bool = False, current_user: dict = Depends(get_current_user)
 ):
     p = await patients_collection.find_one({"_id": oid(patient_id)})
     if p is None:
         raise HTTPException(status_code=404, detail="Paziente non trovato")
+
+    if not force and p.get("report_text") is not None:
+        return ReportResponse(patient_id=patient_id, report_text=p["report_text"])
 
     # Il referto si genera DAI findings, quindi la classificazione deve
     # essere già stata eseguita (workflow: classify -> report, coerente
@@ -428,14 +500,19 @@ async def validate_patient(
     if not p["report_text"]:
         raise HTTPException(status_code=400, detail="Nessun referto da validare")
 
+    gender = current_user.get("gender", "M")
+    cognome = current_user.get("cognome", current_user["username"])
+    title = "Dr." if gender == "M" else "Dr.ssa"
+    signature = f"{title} {cognome}"
+
     await patients_collection.update_one(
         {"_id": oid(patient_id)},
-        {"$set": {"validated": True, "validated_by": current_user["username"]}},
+        {"$set": {"validated": True, "validated_by": signature}},
     )
     return {
         "patient_id": patient_id,
         "validated": True,
-        "validated_by": current_user["username"],
+        "validated_by": signature,
     }
 
 
