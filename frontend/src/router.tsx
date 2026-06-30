@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react';
 
-// Memorizza le funzioni da chiamare ad ogni cambio di rotta
+// Set di listener da notificare ad ogni navigate() — usato per sincronizzare
+// l'hook useLocation senza dipendere da un router esterno
 const navigationListeners = new Set<() => void>();
 
-// Naviga verso un nuovo indirizzo modificando la cronologia del browser
+// Aggiorna la URL del browser e notifica tutti i listener
 export function navigate(to: string) {
   window.history.pushState(null, '', to);
   navigationListeners.forEach((listener) => listener());
 }
 
-// Hook per ascoltare i cambiamenti della URL corrente
+// Hook che espone il pathname corrente e si aggiorna ad ogni navigate()
+// o pressione del bottone indietro del browser
 export function useLocation() {
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
 

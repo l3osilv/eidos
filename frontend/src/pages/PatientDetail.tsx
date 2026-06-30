@@ -31,18 +31,20 @@ export default function PatientDetail({
   const [disclaimer, setDisclaimer] = useState<string>('');
   const [isLoadingDetail, setIsLoadingDetail] = useState<boolean>(false);
 
-  // Stati di caricamento per le varie azioni
+  // Stato di caricamento per ogni azione asincrona (separati per poter disabilitare
+  // solo il bottone coinvolto senza bloccare l'intera interfaccia)
   const [isClassifying, setIsClassifying] = useState<boolean>(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState<boolean>(false);
   const [isSavingReport, setIsSavingReport] = useState<boolean>(false);
   const [isValidating, setIsValidating] = useState<boolean>(false);
   const [errorText, setErrorText] = useState<string | null>(null);
 
-  // Esiti del controllo di coerenza
+  // Risultati del check di coerenza findings/testo referto
   const [coherenceIssues, setCoherenceIssues] = useState<any[]>([]);
   const [hasMismatch, setHasMismatch] = useState<boolean>(false);
 
-  // Reset dei dati se si seleziona un altro paziente o al caricamento del componente
+  // Al cambio di paziente resettiamo tutto lo stato locale e ricarichiamo
+  // i risultati se l'esame è già stato classificato in precedenza
   useEffect(() => {
     setActiveSlice(0);
     setFindings([]);
@@ -52,25 +54,27 @@ export default function PatientDetail({
     setHasMismatch(false);
     setErrorText(null);
 
-    // Carichiamo i risultati se l'esame è già stato classificato in precedenza
     if (patient.has_classification) {
       loadClassificationResults();
     }
   }, [patient.patient_id]);
 
-  // Avviamo il controllo di coerenza al variare dei reperti o del testo del referto
+  // Rieseguiamo il check di coerenza ogni volta che cambia il testo del referto o
+  // lo stato della classificazione — così l'alert si aggiorna senza cliccare nulla
   useEffect(() => {
     if (patient.has_classification && patient.has_report) {
       checkCoherence();
     }
   }, [patient.has_classification, patient.has_report, reportText]);
 
-  // Funzione per caricare i dati della classificazione
+  // Carichiamo in parallelo findings e referto se già esistono — più veloce che
+  // fare due richieste in sequenza.
   const loadClassificationResults = async () => {
     setIsLoadingDetail(true);
     setErrorText(null);
     try {
       const classifyPromise = apiClassifyPatient(patient.patient_id, false);
+      // force=false: se la classificazione esiste già il backend la ritorna senza ricalcolare
       const reportPromise = patient.has_report 
         ? apiGenerateReport(patient.patient_id, false) 
         : Promise.resolve(null);
@@ -96,7 +100,8 @@ export default function PatientDetail({
       const res = await apiClassifyPatient(patient.patient_id, true);
       setFindings(res.findings);
 
-      // Sincronizziamo lo stato con la lista principale nel componente padre
+      // Aggiorniamo lo stato nella lista principale del componente padre
+      // (per aggiornare il badge nella dashboard senza ricaricare)
       const updatedPat = { ...patient, has_classification: true };
       onUpdatePatientState(updatedPat);
     } catch (err: any) {
@@ -114,7 +119,7 @@ export default function PatientDetail({
       setReportText(res.report_text);
       setDisclaimer(res.disclaimer || 'Bozza di referto pre-compilata. Richiede revisione e firma del medico radiologo.');
 
-      // Update parent list state
+      // Aggiorniamo il badge nella dashboard
       const updatedPat = { ...patient, has_report: true };
       onUpdatePatientState(updatedPat);
     } catch (err: any) {
@@ -150,7 +155,7 @@ export default function PatientDetail({
       setCoherenceIssues(res.issues);
       setHasMismatch(res.has_mismatch);
     } catch {
-      // Ignoriamo gli errori silenziosamente per le verifiche in background
+      // Errori silenziosi: il check di coerenza è ausiliario, non blocca il workflow
     }
   };
 

@@ -1,7 +1,7 @@
 """
-Schemi dati. Aggiornati per il modello con utenti (medico/specializzando)
-e pazienti reali (nome, cognome, codice fiscale, data di nascita) salvati
-su MongoDB.
+Schemi Pydantic per richieste e risposte dell'API.
+Coprono utenti (medico/specializzando), pazienti con dati anagrafici reali,
+findings del Modello I, testo del referto e risposte di coerenza.
 """
 
 from datetime import date, datetime
@@ -10,14 +10,12 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
-# ---------------------------------------------------------------------------
-# Utenti / Auth
-# ---------------------------------------------------------------------------
+# --- Utenti / Auth ---
 class UserCreate(BaseModel):
     nome: str
     cognome: str
-    gender: str  # "M" | "F"
-    role: str    # "medico" | "specializzando"
+    gender: str   # "M" o "F"
+    role: str     # "medico" o "specializzando"
     password: str
     username: Optional[str] = None
 
@@ -50,9 +48,7 @@ class ProfileUpdate(BaseModel):
 
 
 
-# ---------------------------------------------------------------------------
-# Pazienti
-# ---------------------------------------------------------------------------
+# --- Pazienti ---
 class PatientCreate(BaseModel):
     nome: str
     cognome: str
@@ -117,7 +113,7 @@ class PatientStatus(BaseModel):
 
 
 class PatientSummary(BaseModel):
-    """Per la lista pazienti (storico)."""
+    """Vista ridotta usata per la lista pazienti nella dashboard (storico casi)."""
 
     patient_id: str
     nome: str

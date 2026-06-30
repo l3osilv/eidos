@@ -18,7 +18,8 @@ export default function Dashboard({
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<FilterStatus>('ALL');
 
-  // Helper per determinare lo stato corrente del paziente
+  // Stato aggregato del paziente ricavato dai tre flag booleani.
+  // L'ordine di precedenza è: validated > has_report > has_classification > niente
   const getPatientStatus = (p: Patient): 'TO_CLASSIFY' | 'CLASSIFIED' | 'REPORT_GENERATED' | 'VALIDATED' => {
     if (p.validated) return 'VALIDATED';
     if (p.has_report) return 'REPORT_GENERATED';
@@ -61,7 +62,7 @@ export default function Dashboard({
     }
   };
 
-  // Filtra la lista dei pazienti in base ai criteri di ricerca
+  // Filtraggio combinato: testo libero su nome/CF/ID + tab di stato
   const filteredPatients = patients.filter(p => {
     const query = searchQuery.toLowerCase().trim();
     const matchesSearch =

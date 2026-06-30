@@ -1,9 +1,9 @@
 """
-Autenticazione e gestione ruoli (medico / specializzando).
+Autenticazione JWT e gestione ruoli (medico / specializzando).
 
-ATTENZIONE: SECRET_KEY va impostata come variabile d'ambiente in qualsiasi
-ambiente diverso dal tuo laptop di sviluppo. Il valore di default qui è
-SOLO per farti partire subito.
+ATTENZIONE: la SECRET_KEY di default qui va bene solo in locale.
+In qualsiasi altro ambiente va impostata come variabile d'ambiente JWT_SECRET
+con un valore lungo e random — non lasciare "CHANGE_ME_IN_PRODUCTION".
 """
 
 import os
@@ -17,7 +17,7 @@ from jose import JWTError, jwt
 
 SECRET_KEY = os.getenv("JWT_SECRET", "CHANGE_ME_IN_PRODUCTION")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 8  # validità token: 8 ore (un turno)
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 8  # 8 ore, la durata di un turno ospedaliero
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
@@ -35,7 +35,7 @@ def verify_password(password: str, hashed: str) -> bool:
 
 def create_access_token(data: dict) -> str:
     to_encode = data.copy()
-    # Usiamo datetime.now(timezone.utc) al posto del deprecato datetime.utcnow()
+    # datetime.now(timezone.utc) invece di utcnow() che è deprecato in Python 3.12+
     expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
@@ -63,8 +63,9 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
 
 def require_role(*allowed_roles: str):
     """
-    Dependency factory per limitare un endpoint a uno o più ruoli.
-    Uso: Depends(require_role("medico"))
+    Dependency factory per proteggere un endpoint per ruolo.
+    Si usa come: Depends(require_role("medico"))
+    Ritorna 403 se l'utente autenticato non ha il ruolo richiesto.
     """
 
     async def role_checker(current_user: dict = Depends(get_current_user)) -> dict:

@@ -20,7 +20,8 @@ export default function PacsViewer({
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const playIntervalRef = useRef<number | null>(null);
 
-  // Ricarica l'immagine se cambia il paziente o l'indice selezionato
+  // Ricarichiamo ogni volta che cambia il paziente o la slice selezionata.
+  // Flag 'active' per evitare aggiornamenti di stato su componente smontato.
   useEffect(() => {
     let active = true;
     let oldUrl = imageUrl;
@@ -47,7 +48,7 @@ export default function PacsViewer({
 
     return () => {
       active = false;
-      // Revoca del blob URL per evitare sprechi di memoria
+      // Revochiamo il blob URL creato da createObjectURL per non perdere memoria
       if (oldUrl.startsWith('blob:')) {
         URL.revokeObjectURL(oldUrl);
       }
@@ -62,7 +63,9 @@ export default function PacsViewer({
     onSliceChange((selectedIndex + 1) % 8);
   };
 
-  // Genera le miniature in memoria da mostrare nella griglia in basso
+  // Le miniature vengono caricate in sequenza all'apertura del paziente.
+  // Il reload al cambio di has_classification garantisce che le thumb si aggiornino
+  // dopo la prima classificazione (anche se le immagini non cambiano).
   const [thumbUrls, setThumbUrls] = useState<string[]>([]);
   useEffect(() => {
     async function loadThumbs() {
@@ -78,7 +81,7 @@ export default function PacsViewer({
       setThumbUrls(urls);
     }
     loadThumbs();
-  }, [patient.patient_id, patient.has_classification]); // Ricarichiamo le miniature se cambia la classificazione
+  }, [patient.patient_id, patient.has_classification]);
 
   return (
     <div className="bg-slate-950 border border-slate-800 rounded-lg overflow-hidden flex flex-col p-4 shadow-xl" id="clinical-pacs-viewer">

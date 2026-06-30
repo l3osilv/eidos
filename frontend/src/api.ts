@@ -1,6 +1,8 @@
 import { Patient, ClassificationResponse, ReportResponse, CoherenceResponse, User, AuthResponse, Finding, CoherenceIssue, Role, Gender } from './types';
 
-// Salviamo in memoria e nel localStorage il token e l'utente della sessione corrente
+// Token e utente della sessione attiva tenuti in memoria e nel localStorage.
+// Due storage perché il localStorage sopravvive ai refresh, la variabile in memoria
+// è più veloce da leggere durante il render.
 let tokenMemory: string | null = localStorage.getItem('tokenMemory');
 let currentSessionUser: User | null = (() => {
   const stored = localStorage.getItem('currentSessionUser');
@@ -11,7 +13,7 @@ let currentSessionUser: User | null = (() => {
   }
 })();
 
-// Configurazione di base per l'API (default locale)
+// URL base del backend — default localhost per sviluppo locale
 let baseApiUrl = 'http://localhost:8000';
 
 export function getApiConfig() {
@@ -50,11 +52,9 @@ export function getCurrentUser(): User | null {
   return currentSessionUser;
 }
 
-// -------------------------------------------------------------
-// FUNZIONI DI CHIAMATA ALLE API
-// -------------------------------------------------------------
+// --- Funzioni di chiamata API ---
 
-// Registrazione nuovo utente: POST /auth/register
+// POST /auth/register
 export async function apiRegister(body: any): Promise<AuthResponse> {
   const response = await fetch(`${baseApiUrl}/auth/register`, {
     method: 'POST',
@@ -69,7 +69,7 @@ export async function apiRegister(body: any): Promise<AuthResponse> {
   return response.json();
 }
 
-// Aggiornamento profilo utente: PUT /users/profile
+// PUT /users/profile — aggiorna i dati del profilo dell'utente loggato
 export async function apiUpdateProfile(nome: string, cognome: string, gender: Gender, avatar?: string): Promise<AuthResponse> {
   const response = await fetch(`${baseApiUrl}/users/profile`, {
     method: 'PUT',
@@ -87,7 +87,7 @@ export async function apiUpdateProfile(nome: string, cognome: string, gender: Ge
   return response.json();
 }
 
-// Esecuzione login: POST /auth/login
+// POST /auth/login
 export async function apiLogin(body: URLSearchParams): Promise<AuthResponse> {
   const response = await fetch(`${baseApiUrl}/auth/login`, {
     method: 'POST',
@@ -102,7 +102,7 @@ export async function apiLogin(body: URLSearchParams): Promise<AuthResponse> {
   return response.json();
 }
 
-// Lista completa dei pazienti: GET /patients
+// GET /patients — lista completa dei pazienti nel registro
 export async function apiGetPatients(): Promise<Patient[]> {
   const response = await fetch(`${baseApiUrl}/patients`, {
     method: 'GET',
@@ -118,7 +118,7 @@ export async function apiGetPatients(): Promise<Patient[]> {
   return response.json();
 }
 
-// Dati di un singolo paziente per ID: GET /patients/{id}
+// GET /patients/{id}
 export async function apiGetPatientById(id: string): Promise<Patient> {
   const response = await fetch(`${baseApiUrl}/patients/${id}`, {
     method: 'GET',
@@ -133,7 +133,7 @@ export async function apiGetPatientById(id: string): Promise<Patient> {
   return response.json();
 }
 
-// Creazione nuova scheda paziente (con caricamento file): POST /patients (multipart/form-data)
+// POST /patients — multipart/form-data con anagrafica + 8 slice
 export async function apiCreatePatient(formData: FormData): Promise<Patient> {
   const response = await fetch(`${baseApiUrl}/patients`, {
     method: 'POST',
@@ -150,7 +150,7 @@ export async function apiCreatePatient(formData: FormData): Promise<Patient> {
   return response.json();
 }
 
-// Caricamento dell'immagine di una specifica slice: GET /patients/{id}/slices/{index}
+// GET /patients/{id}/slices/{index} — ritorna un blob URL dell'immagine
 export async function apiGetSliceImage(id: string, index: number, patientObj?: Patient): Promise<string> {
   const response = await fetch(`${baseApiUrl}/patients/${id}/slices/${index}`, {
     method: 'GET',
@@ -167,7 +167,7 @@ export async function apiGetSliceImage(id: string, index: number, patientObj?: P
   return URL.createObjectURL(blob);
 }
 
-// Esecuzione classificazione dei reperti tramite modello: POST /patients/{id}/classify
+// POST /patients/{id}/classify — lancia l'inferenza del Modello I
 export async function apiClassifyPatient(id: string, force: boolean = false): Promise<ClassificationResponse> {
   const response = await fetch(`${baseApiUrl}/patients/${id}/classify?force=${force}`, {
     method: 'POST',
@@ -183,7 +183,7 @@ export async function apiClassifyPatient(id: string, force: boolean = false): Pr
   return response.json();
 }
 
-// Creazione bozza iniziale del referto: POST /patients/{id}/report
+// POST /patients/{id}/report — genera la bozza di referto dal Modello II
 export async function apiGenerateReport(id: string, force: boolean = false): Promise<ReportResponse> {
   const response = await fetch(`${baseApiUrl}/patients/${id}/report?force=${force}`, {
     method: 'POST',
@@ -202,7 +202,7 @@ export async function apiGenerateReport(id: string, force: boolean = false): Pro
   return response.json();
 }
 
-// Salvataggio delle modifiche manuali alla bozza: PUT /patients/{id}/report
+// PUT /patients/{id}/report — salva le modifiche manuali al testo
 export async function apiUpdateReport(id: string, reportText: string): Promise<ReportResponse> {
   const response = await fetch(`${baseApiUrl}/patients/${id}/report`, {
     method: 'PUT',
@@ -220,7 +220,7 @@ export async function apiUpdateReport(id: string, reportText: string): Promise<R
   return response.json();
 }
 
-// Controllo di coerenza fra classificazione e testo referto: GET /patients/{id}/coherence
+// GET /patients/{id}/coherence — controlla se il testo del referto cita i findings positivi
 export async function apiGetCoherence(id: string): Promise<CoherenceResponse> {
   const response = await fetch(`${baseApiUrl}/patients/${id}/coherence`, {
     method: 'GET',
@@ -235,7 +235,7 @@ export async function apiGetCoherence(id: string): Promise<CoherenceResponse> {
   return response.json();
 }
 
-// Validazione del referto con firma del medico strutturato: POST /patients/{id}/validate
+// POST /patients/{id}/validate — solo ruolo "medico", aggiunge la firma digitale
 export async function apiValidateReport(id: string): Promise<{ patient_id: string; validated: boolean; validated_by: string }> {
   const response = await fetch(`${baseApiUrl}/patients/${id}/validate`, {
     method: 'POST',
@@ -254,7 +254,7 @@ export async function apiValidateReport(id: string): Promise<{ patient_id: strin
   return response.json();
 }
 
-// Esportazione del referto in formato testo: GET /patients/{id}/export
+// GET /patients/{id}/export — ritorna testo plain del referto formattato per la stampa
 export async function apiExportReport(id: string): Promise<string> {
   const response = await fetch(`${baseApiUrl}/patients/${id}/export`, {
     method: 'GET',

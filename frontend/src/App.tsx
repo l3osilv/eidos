@@ -22,18 +22,19 @@ export default function App() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const currentPath = useLocation();
 
-  // Estraiamo l'ID del paziente selezionato direttamente dalla URL
+  // ID del paziente estratto direttamente dalla URL — niente state dedicato,
+  // la URL è la fonte di verità per la navigazione
   const match = currentPath.match(/^\/patients\/([^/]+)$/);
   const selectedPatientId = match ? match[1] : null;
 
-  // Indicatori di caricamento globali ed errori
+  // Indicatori di stato globali per loading ed errori della lista pazienti
   const [isLoadingPatients, setIsLoadingPatients] = useState<boolean>(false);
   const [listError, setListError] = useState<string | null>(null);
   const [isFormSubmitting, setIsFormSubmitting] = useState<boolean>(false);
 
   const apiBaseUrl = connectionConfig.baseUrl;
 
-  // Sincronizza l'URL delle API e ricarica i pazienti se l'utente è autenticato
+  // Ricarichiamo i pazienti ogni volta che cambia l'URL del backend o l'utente loggato
   useEffect(() => {
     setApiConfig(apiBaseUrl);
     if (currentUser) {
@@ -41,15 +42,14 @@ export default function App() {
     }
   }, [apiBaseUrl, currentUser?.username]);
 
-  // Reindirizzamenti in base allo stato di autenticazione e alla URL corrente
+  // Guardia di navigazione: gli utenti non autenticati finiscono sempre su /login
+  // e quelli autenticati non possono tornare su /login o /register
   useEffect(() => {
     if (!currentUser) {
-      // Se non siamo autenticati, possiamo stare solo su /login o /register
       if (currentPath !== '/login' && currentPath !== '/register') {
         navigate('/login');
       }
     } else {
-      // Se siamo autenticati, non dobbiamo stare su /login o /register o alla radice /
       if (currentPath === '/login' || currentPath === '/register' || currentPath === '/') {
         navigate('/dashboard');
       }
@@ -84,7 +84,7 @@ export default function App() {
 
   const handleBackToDashboard = () => {
     navigate('/dashboard');
-    loadPatientsRegistry(); // Ricarichiamo l'elenco per aggiornare lo stato dei badge
+    loadPatientsRegistry(); // ricarichiamo per aggiornare i badge di stato
   };
 
   const handleCreateNewPatient = async (formData: FormData) => {
@@ -93,10 +93,9 @@ export default function App() {
     try {
       const created = await apiCreatePatient(formData);
 
-      // Inseriamo il nuovo paziente in cima alla lista
+      // Inseriamo il nuovo paziente in cima alla lista senza ricaricare tutto
       setPatients((prev) => [created, ...prev]);
 
-      // Ritorniamo direttamente alla dashboard
       navigate('/dashboard');
       return created;
     } catch (err: any) {

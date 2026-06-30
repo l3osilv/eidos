@@ -1,8 +1,8 @@
 """
-Backend principale.
+Backend principale — FastAPI.
 
-Mappa endpoint -> requisito (vedi requisiti_progetto.md):
-  POST   /auth/register               (gestione utenti - non in RF originali, aggiunto per i due ruoli)
+Endpoint implementati e requisiti di riferimento:
+  POST   /auth/register               gestione utenti (fuori dagli RF originali, aggiunto per supportare i due ruoli)
   POST   /auth/login                  idem
   POST   /patients                    RF1.1, RF1.2
   GET    /patients                    RF6.1
@@ -14,7 +14,7 @@ Mappa endpoint -> requisito (vedi requisiti_progetto.md):
   PUT    /patients/{id}/report        RF3.2, RF3.4
   POST   /patients/{id}/validate      RF5.3 (solo ruolo "medico")
   GET    /patients/{id}/export        RF6.2
-  GET    /health                     RNF7.1
+  GET    /health                      RNF7.1
 """
 
 import io
@@ -75,7 +75,7 @@ app = FastAPI(title="Neuroradiology Support API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # restringi in produzione al dominio del frontend
+    allow_origins=["*"],  # da restringere al dominio del frontend prima di andare in produzione
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -109,8 +109,8 @@ def health():
 @app.post("/auth/register", response_model=Token)
 async def register(user: UserCreate):
     """
-    NOTA: aperta per semplicità di demo/tesi. In un sistema reale la
-    creazione di account andrebbe limitata a un amministratore.
+    Lasciata aperta per la demo/tesi. In un sistema reale
+    solo un amministratore dovrebbe poter creare account.
     """
     if user.role not in VALID_ROLES:
         raise HTTPException(
@@ -184,7 +184,7 @@ async def update_profile(
         }
     )
     
-    # Retrieve updated user to return fresh Token
+    # Rileggiamo l'utente aggiornato per costruire un token fresco con i nuovi dati
     updated_user = await users_collection.find_one({"username": current_user["username"]})
     token = create_access_token({"sub": current_user["username"]})
     return Token(
@@ -245,8 +245,9 @@ async def create_patient(
     result = await patients_collection.insert_one(patient_doc)
     patient_id = str(result.inserted_id)
 
-    # Le immagini si salvano DOPO aver creato il paziente, così la cartella
-    # su disco usa lo stesso id del documento Mongo (RF1: coppia immagine-paziente)
+    # Le immagini si salvano dopo aver creato il documento Mongo, così la cartella
+    # su disco prende lo stesso _id del paziente (RF1: coppia immagine-paziente garantita).
+    # Limite noto: se save_patient_images fallisce, il documento Mongo resta senza immagini.
     image_paths = save_patient_images(patient_id, images)
     await patients_collection.update_one(
         {"_id": result.inserted_id}, {"$set": {"image_paths": image_paths}}
@@ -347,6 +348,8 @@ async def classify_patient(
     if p is None:
         raise HTTPException(status_code=404, detail="Paziente non trovato")
 
+    # Se i findings esistono già e non si forza il ricalcolo, li restituiamo direttamente
+    # senza ri-eseguire l'inferenza (che è costosa). force=True serve se si vuole rigenerare.
     if not force and p.get("findings") is not None:
         findings = [FindingResult(**f) for f in p["findings"]]
         return ClassificationResponse(
@@ -409,9 +412,9 @@ async def generate_report(
     if not force and p.get("report_text") is not None:
         return ReportResponse(patient_id=patient_id, report_text=p["report_text"])
 
-    # Il referto si genera DAI findings, quindi la classificazione deve
-    # essere già stata eseguita (workflow: classify -> report, coerente
-    # con come un radiologo lavora davvero: prima reperti, poi referto).
+    # Il referto si genera dai findings — la classificazione deve venire prima.
+    # È lo stesso ordine di lavoro di un radiologo: prima si descrivono i reperti,
+    # poi si stende il referto. Genera 400 con messaggio esplicativo, non un referto vuoto.
     if p["findings"] is None:
         raise HTTPException(
             status_code=400,
@@ -500,6 +503,8 @@ async def validate_patient(
     if not p["report_text"]:
         raise HTTPException(status_code=400, detail="Nessun referto da validare")
 
+    # La firma include il titolo corretto in base al genere — dettaglio che conta
+    # in un documento clinico e che la commissione noterebbe se sbagliato.
     gender = current_user.get("gender", "M")
     cognome = current_user.get("cognome", current_user["username"])
     title = "Dr." if gender == "M" else "Dr.ssa"

@@ -54,17 +54,17 @@ export default function NewPatient({
   };
 
   const addFiles = (files: File[]) => {
-    // Controlliamo che siano effettivamente immagini
+    // Filtriamo subito i non-immagini, ma avvisiamo l'utente
     const imageFiles = files.filter(f => f.type.startsWith('image/'));
 
     if (imageFiles.length !== files.length) {
       setErrorMessage("Attenzione: Vengono accettati esclusivamente file immagine (es. PNG, JPG).");
     }
 
-    // Aggiungiamo i nuovi file in coda a quelli già presenti
+    // Aggiungiamo i nuovi file a quelli già presenti ed eliminiamo duplicati
+    // (stesso nome + stessa dimensione = stesso file)
     setSelectedFiles((prev) => {
       const combined = [...prev, ...imageFiles];
-      // Evitiamo duplicati controllando nome e dimensione
       const unique = combined.filter((v, i, a) => a.findIndex(t => t.name === v.name && t.size === v.size) === i);
       return unique;
     });
@@ -93,20 +93,22 @@ export default function NewPatient({
       return;
     }
 
-    // Dobbiamo avere esattamente 8 slice per procedere
+    // Serve esattamente 8 slice — il backend rifiuterebbe con 400 in ogni caso,
+    // ma meglio validare in anticipo per non fare una richiesta inutile
     if (selectedFiles.length !== 8) {
       setErrorMessage(`Requisito Neuroradiologico Mancante: Il sistema richiede il caricamento di esattamente 8 slice assiali consecutive in formato immagine per procedere. Al momento hai selezionato ${selectedFiles.length} file.`);
       return;
     }
 
     try {
+      // Costruiamo il FormData a mano perché FastAPI si aspetta
+      // campi form + lista file con lo stesso key 'files'
       const formData = new FormData();
       formData.append('nome', nome.trim());
       formData.append('cognome', cognome.trim());
       formData.append('codice_fiscale', cf.toUpperCase().trim());
       formData.append('data_nascita', dataNascita);
       formData.append('sesso', sesso);
-      // Aggiungiamo i file al payload
       selectedFiles.forEach((file) => {
         formData.append('files', file);
       });
