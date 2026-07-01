@@ -3,22 +3,17 @@ Wrapper per il Modello I di classificazione (RF2).
 
 Collega il backend alla repo SSL-BrainCT-Pathology (stage2_2d_slice_level).
 Un modello binario per classe, caricato separatamente: è la strategia "binary
-decomposition" che nella repo originale batte il multi-label di parecchio (+6/+46% AUC).
+decomposition" (che nella repo originale risulta miglore del multi-label (+6/+46% AUC)).
 
 Architettura per ogni classe:
-  DenseNet-121 (encoder, pesi SimCLR) → GatedAttentionAggregator → testa di classificazione
+  DenseNet-121 (encoder, pesi SimCLR) → AvgAggregator → testa di classificazione
   → sigmoid → probabilità tra 0 e 1
 
-NB: ogni run di training salva i parametri usati in outputs/<run_name>/config.json.
-Se hai usato encoder o aggregatori diversi dal default, mettili in RUN_CONFIG_OVERRIDES,
-non toccare il resto del file.
-
-ATTENZIONE al preprocessing: le immagini devono passare per BrainCTPreprocessor
-con gli stessi parametri usati in training (circle mask, multi-window, CLAHE).
-Se usi un preprocessing diverso il modello riceve input fuori distribuzione —
-niente errore, solo predizioni completamente sbagliate. È il tipo di bug peggiore.
+I parametri di ogni modello (encoder, aggregatore, preprocessing) vengono letti
+direttamente dai JSON in models_config/ per garantire allineamento con il training.
 """
 
+import json
 import logging
 import os
 import sys
@@ -60,8 +55,19 @@ except ImportError as e:
         e,
     )
 
-# Checkpoint fine-tuned per classe — contengono già i pesi SSL dentro,
-# salvati dal training supervisionato. Non sono i pesi SSL grezzi.
+# ──────────────────────────────────────────────────────────────────────────────
+# Configurazioni caricate dai JSON di models_config/
+# ──────────────────────────────────────────────────────────────────────────────
+
+# Mappa: label → path del file JSON di configurazione usato durante il training
+CONFIG_JSON_PATHS: Dict[str, str] = {
+    "Blood": "models_config/config_blood.json",
+    "Mass": "models_config/config_massa.json",
+    "Ischemia": "models_config/config_ischemia.json",
+    "Edema": "models_config/config_edema.json",
+}
+
+# Checkpoint fine-tuned per classe.
 CHECKPOINT_PATHS: Dict[str, str] = {
     "Blood": "checkpoints/model_I_blood_best.pth",
     "Mass": "checkpoints/model_I_mass_best.pth",
@@ -69,19 +75,36 @@ CHECKPOINT_PATHS: Dict[str, str] = {
     "Edema": "checkpoints/model_I_edema_best.pth",
 }
 
-# Usalo solo se un run specifico ha usato un encoder o aggregatore diverso dal default.
-# Es: {"Mass": {"ENCODER_NAME": "convnext_small", "AGGREGATOR_TYPE": "gated_attention"}}
-# Se è tutto densenet121 + gated_attention lascia vuoto.
-RUN_CONFIG_OVERRIDES: Dict[str, dict] = {}
 
-# Soglie di decisione per classe. 0.5 è solo il default iniziale —
-# andrebbero calibrate sul validation set con find_thresholds_swin.py (o equivalente
-# Stage 2). Con soglie ottimizzate l'F1 migliora sensibilmente.
+def _load_json_config(label: str) -> dict:
+    """
+    Carica il JSON di configurazione per la classe indicata.
+    Ritorna un dizionario con tutti i parametri usati durante il training,
+    oppure un dict vuoto se il file non esiste (con warning).
+    """
+    path = CONFIG_JSON_PATHS.get(label)
+    if path is None or not os.path.exists(path):
+        logger.warning(
+            "Config JSON per '%s' non trovato in '%s' — uso valori di default",
+            label,
+            path,
+        )
+        return {}
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+# Pre-carica tutti i JSON all'import per avere i dati subito disponibili
+_CLASS_CONFIGS: Dict[str, dict] = {
+    label: _load_json_config(label) for label in CONFIG_JSON_PATHS
+}
+
+# Soglie di decisione per classe. 0.5 è solo il default iniziale.
+# Le 4 classi corrispondono ai 4 modelli binari effettivamente addestrati.
 CLASS_THRESHOLDS: Dict[str, float] = {
     "Blood": 0.5,
     "Mass": 0.5,
     "Ischemia": 0.5,
-    "Chronic_Ischemia": 0.5,
     "Edema": 0.5,
 }
 
@@ -92,20 +115,39 @@ CLASS_RELIABILITY_AUC: Dict[str, Optional[float]] = {
     "Blood": 0.568,
     "Mass": 0.589,
     "Edema": 0.756,
-    "Ischemia": None,      # non ancora misurato sui nostri run
-    "Chronic_Ischemia": None,
+    "Ischemia": None,  # non ancora misurato sui nostri run
 }
 
 
 def _build_cfg(label: str):
-    """Ricostruisce la stessa Config usata in training per questa classe."""
+    """
+    Ricostruisce la stessa Config usata in training per questa classe,
+    leggendo i parametri dal JSON di configurazione corrispondente.
+    """
     cfg = Config()
-    cfg.set_task_mode("binary", target_class=label)
-    cfg.ENCODER_PRETRAINED = False  # i pesi vengono dal checkpoint, non da ImageNet
-    cfg.ENCODER_NAME = "densenet121"  # quello passato con --encoder durante il training
 
-    for key, value in RUN_CONFIG_OVERRIDES.get(label, {}).items():
-        setattr(cfg, key, value)
+    json_cfg = _CLASS_CONFIGS.get(label, {})
+
+    # Modalità task e classe target
+    cfg.set_task_mode(
+        json_cfg.get("TASK_MODE", "binary"),
+        target_class=json_cfg.get("BINARY_TARGET", label),
+    )
+
+    # Encoder — tutti i run usano densenet121 con pesi dal checkpoint (non ImageNet)
+    cfg.ENCODER_NAME = json_cfg.get("ENCODER_NAME", "densenet121")
+    cfg.ENCODER_PRETRAINED = json_cfg.get("ENCODER_PRETRAINED", False)
+
+    # Aggregatore — dai JSON risulta "avg" per tutti i run
+    cfg.AGGREGATOR_TYPE = json_cfg.get("AGGREGATOR_TYPE", "avg")
+    cfg.AGGREGATOR_HIDDEN = json_cfg.get("AGGREGATOR_HIDDEN", 512)
+
+    # Testa di classificazione
+    cfg.HEAD_HIDDEN = json_cfg.get("HEAD_HIDDEN", 256)
+    cfg.HEAD_DROPOUT = json_cfg.get("HEAD_DROPOUT", 0.3)
+
+    # Numero di slice per paziente
+    cfg.NUM_SLICES = json_cfg.get("NUM_SLICES", 8)
 
     return cfg
 
@@ -139,6 +181,23 @@ def _extract_state_dict(checkpoint) -> dict:
     return checkpoint
 
 
+def _build_preprocessor_from_config(json_cfg: dict):
+    """
+    Costruisce il BrainCTPreprocessor usando i parametri dal JSON di config.
+    Se la repo non è disponibile ritorna None.
+    """
+    if BrainCTPreprocessor is None:
+        return None
+
+    return BrainCTPreprocessor(
+        use_circle_mask=json_cfg.get("USE_CIRCLE_MASK", True),
+        circle_radius=json_cfg.get("CIRCLE_RADIUS_RATIO", 0.45),
+        adaptive_circle=json_cfg.get("ADAPTIVE_CIRCLE", True),
+        use_multiwindow=json_cfg.get("USE_MULTIWINDOW", True),
+        use_clahe=json_cfg.get("USE_CLAHE", True),
+    )
+
+
 class ClassificationModel:
     """
     Wrapper attorno ai modelli di classificazione binaria per classe (RF2).
@@ -157,12 +216,28 @@ class ClassificationModel:
         """
         Carica i checkpoint disponibili. Quelli mancanti vengono saltati con un warning
         e il sistema continua a funzionare con le classi rimanenti.
+        Il preprocessor viene configurato dal primo JSON disponibile (i parametri di
+        preprocessing sono identici per tutti i run).
         """
         logger.info("Caricamento Modello I su %s", DEVICE)
 
-        if BrainCTPreprocessor is not None:
-            # Questi sono i parametri di default del Config della repo.
-            # Se i config.json dei tuoi run hanno valori diversi, aggiorna qui.
+        # Costruisce il preprocessor dal primo JSON disponibile.
+        # I parametri di preprocessing (circle mask, multiwindow, CLAHE) sono
+        # identici in tutti e 4 i config JSON, quindi basta usarne uno qualsiasi.
+        for label, json_cfg in _CLASS_CONFIGS.items():
+            if json_cfg:
+                self.preprocessor = _build_preprocessor_from_config(json_cfg)
+                # Aggiorna img_size dal JSON se presente
+                img_size_list = json_cfg.get("IMG_SIZE")
+                if img_size_list and len(img_size_list) == 2:
+                    self.img_size = tuple(img_size_list)
+                break
+
+        # Fallback se nessun JSON è stato trovato
+        if self.preprocessor is None and BrainCTPreprocessor is not None:
+            logger.warning(
+                "Nessun config JSON trovato: uso parametri di preprocessing di default"
+            )
             self.preprocessor = BrainCTPreprocessor(
                 use_circle_mask=True,
                 circle_radius=0.45,
@@ -190,7 +265,9 @@ class ClassificationModel:
                     )
                 if unexpected:
                     logger.warning(
-                        "'%s': %d chiavi inattese nel checkpoint", label, len(unexpected)
+                        "'%s': %d chiavi inattese nel checkpoint",
+                        label,
+                        len(unexpected),
                     )
 
                 model.to(DEVICE).eval()
@@ -248,8 +325,8 @@ class ClassificationModel:
         Output: tensore (1, 8, 3, H, W) su DEVICE — formato che si aspetta MultiLabelMILClassifier
         """
         processed = [self._preprocess_one(img) for img in images]
-        stacked = np.stack(processed, axis=0)     # (8, H, W, 3)
-        stacked = stacked.transpose(0, 3, 1, 2)   # (8, 3, H, W)
+        stacked = np.stack(processed, axis=0)  # (8, H, W, 3)
+        stacked = stacked.transpose(0, 3, 1, 2)  # (8, 3, H, W)
         tensor = torch.from_numpy(stacked).float().unsqueeze(0)  # (1, 8, 3, H, W)
         return tensor.to(DEVICE)
 

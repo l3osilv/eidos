@@ -1,9 +1,21 @@
 """
 Backend principale — FastAPI.
 
+Questo modulo contiene tutti gli endpoint REST dell'applicazione MedicinAI-BrainCT.
+L'architettura segue un flusso lineare che rispecchia il workflow diagnostico reale:
+  1. Registrazione/login dell'operatore sanitario
+  2. Creazione paziente con caricamento delle 8 slice TC (RF1)
+  3. Classificazione automatica delle patologie tramite Modello I (RF2)
+  4. Generazione automatica del referto tramite Modello II (RF3)
+  5. Controllo di coerenza tra findings e testo del referto (RF4)
+  6. Visualizzazione delle slice e dello storico pazienti (RF5, RF6)
+  7. Validazione del referto da parte del medico (RF5.3)
+  8. Esportazione del referto in formato testuale (RF6.2)
+
 Endpoint implementati e requisiti di riferimento:
   POST   /auth/register               gestione utenti (fuori dagli RF originali, aggiunto per supportare i due ruoli)
   POST   /auth/login                  idem
+  PUT    /users/profile               aggiornamento profilo utente
   POST   /patients                    RF1.1, RF1.2
   GET    /patients                    RF6.1
   GET    /patients/{id}               RF6.1
@@ -27,7 +39,7 @@ from bson import ObjectId
 from bson.errors import InvalidId
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import PlainTextResponse, StreamingResponse
+from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from PIL import Image
 
@@ -48,7 +60,6 @@ from schemas import (
     CoherenceIssue,
     FindingResult,
     PatientStatus,
-    PatientSummary,
     ReportResponse,
     ReportUpdateRequest,
     Token,
@@ -65,6 +76,13 @@ EXPECTED_NUM_SLICES = 8
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """
+    Gestore del ciclo di vita dell'applicazione FastAPI.
+
+    All'avvio carica i modelli di classificazione e refertazione in memoria.
+    I modelli vengono caricati una volta sola e condivisi tra tutte le richieste
+    come singleton — evita di ricaricare i pesi ad ogni richiesta.
+    """
     classification_model.load()
     report_model.load()
     yield
@@ -81,11 +99,55 @@ app.add_middleware(
 )
 
 
-def oid(id_str: str) -> ObjectId:
+# ---------------------------------------------------------------------------
+# Helpers — eliminano la duplicazione tra endpoint
+# ---------------------------------------------------------------------------
+
+def _oid(id_str: str) -> ObjectId:
+    """Converte una stringa in ObjectId MongoDB. Lancia HTTP 400 se non valido."""
     try:
         return ObjectId(id_str)
     except InvalidId:
         raise HTTPException(status_code=400, detail="ID paziente non valido")
+
+
+async def _get_patient(patient_id: str) -> dict:
+    """Cerca un paziente per ID, lancia HTTP 404 se non esiste."""
+    p = await patients_collection.find_one({"_id": _oid(patient_id)})
+    if p is None:
+        raise HTTPException(status_code=404, detail="Paziente non trovato")
+    return p
+
+
+def _patient_status(p: dict) -> PatientStatus:
+    """Converte un documento MongoDB paziente in PatientStatus."""
+    dn = p["data_nascita"]
+    return PatientStatus(
+        patient_id=str(p["_id"]),
+        nome=p["nome"],
+        cognome=p["cognome"],
+        codice_fiscale=p["codice_fiscale"],
+        data_nascita=date.fromisoformat(dn) if isinstance(dn, str) else dn,
+        created_at=p["created_at"],
+        num_slices=len(p.get("image_paths", [])),
+        has_classification=p.get("findings") is not None,
+        has_report=p.get("report_text") is not None,
+        validated=p.get("validated", False),
+        validated_by=p.get("validated_by"),
+    )
+
+
+def _build_token(user: dict) -> Token:
+    """Genera un Token JWT a partire da un documento utente (o dict equivalente)."""
+    return Token(
+        access_token=create_access_token({"sub": user["username"]}),
+        role=user["role"],
+        gender=user.get("gender", "M"),
+        nome=user.get("nome", ""),
+        cognome=user.get("cognome", ""),
+        username=user["username"],
+        avatar=user.get("avatar"),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -93,6 +155,13 @@ def oid(id_str: str) -> ObjectId:
 # ---------------------------------------------------------------------------
 @app.get("/health")
 def health():
+    """
+    Endpoint di health check (RNF7.1).
+
+    Restituisce lo stato dei modelli caricati e il dispositivo di calcolo in uso.
+    Utile per verificare che il backend sia avviato correttamente e che i checkpoint
+    siano stati trovati. Non richiede autenticazione.
+    """
     import torch
 
     return {
@@ -113,89 +182,61 @@ async def register(user: UserCreate):
     solo un amministratore dovrebbe poter creare account.
     """
     if user.role not in VALID_ROLES:
-        raise HTTPException(
-            status_code=400, detail=f"Ruolo deve essere uno di: {VALID_ROLES}"
-        )
+        raise HTTPException(status_code=400, detail=f"Ruolo deve essere uno di: {VALID_ROLES}")
 
-    username = user.username
-    if not username:
-        username = f"{user.nome}{user.cognome}".lower().replace(" ", "")
+    username = user.username or f"{user.nome}{user.cognome}".lower().replace(" ", "")
 
-    existing = await users_collection.find_one({"username": username})
-    if existing:
+    if await users_collection.find_one({"username": username}):
         raise HTTPException(status_code=400, detail="Username già in uso")
 
-    await users_collection.insert_one(
-        {
-            "username": username,
-            "hashed_password": hash_password(user.password),
-            "nome": user.nome,
-            "cognome": user.cognome,
-            "gender": user.gender,
-            "role": user.role,
-            "avatar": None,
-        }
-    )
-
-    token = create_access_token({"sub": username})
-    return Token(
-        access_token=token,
-        role=user.role,
-        gender=user.gender,
-        nome=user.nome,
-        cognome=user.cognome,
-        username=username,
-        avatar=None
-    )
+    doc = {
+        "username": username,
+        "hashed_password": hash_password(user.password),
+        "nome": user.nome,
+        "cognome": user.cognome,
+        "gender": user.gender,
+        "role": user.role,
+        "avatar": None,
+    }
+    await users_collection.insert_one(doc)
+    return _build_token(doc)
 
 
 @app.post("/auth/login", response_model=Token)
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
+    """
+    Autenticazione con username e password (OAuth2 password flow).
+
+    Verifica le credenziali contro MongoDB e restituisce un token JWT
+    valido per 8 ore. Il frontend lo memorizza e lo invia come header
+    Authorization: Bearer <token> in ogni richiesta successiva.
+
+    Lancia HTTP 401 se le credenziali sono errate.
+    """
     user = await users_collection.find_one({"username": form_data.username})
     if not user or not verify_password(form_data.password, user["hashed_password"]):
         raise HTTPException(status_code=401, detail="Username o password errati")
-
-    token = create_access_token({"sub": user["username"]})
-    return Token(
-        access_token=token,
-        role=user["role"],
-        gender=user.get("gender", "M"),
-        nome=user.get("nome", ""),
-        cognome=user.get("cognome", ""),
-        username=user["username"],
-        avatar=user.get("avatar")
-    )
+    return _build_token(user)
 
 
 @app.put("/users/profile", response_model=Token)
 async def update_profile(
     profile: ProfileUpdate,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
-    await users_collection.update_one(
-        {"username": current_user["username"]},
-        {
-            "$set": {
-                "nome": profile.nome,
-                "cognome": profile.cognome,
-                "gender": profile.gender,
-                "avatar": profile.avatar,
-            }
-        }
-    )
-    
+    """
+    Aggiorna il profilo dell'utente corrente (nome, cognome, genere, avatar).
+
+    Dopo l'aggiornamento genera un nuovo token JWT che riflette i dati
+    aggiornati — necessario perché il frontend usa i dati dal token per
+    personalizzare l'interfaccia (es. "Benvenuto, Dr. Rossi").
+    """
+    update_fields = {"nome": profile.nome, "cognome": profile.cognome, "gender": profile.gender, "avatar": profile.avatar}
+    await users_collection.update_one({"username": current_user["username"]}, {"$set": update_fields})
+
     # Rileggiamo l'utente aggiornato per costruire un token fresco con i nuovi dati
-    updated_user = await users_collection.find_one({"username": current_user["username"]})
-    token = create_access_token({"sub": current_user["username"]})
-    return Token(
-        access_token=token,
-        role=updated_user["role"],
-        gender=updated_user.get("gender", "M"),
-        nome=updated_user.get("nome", ""),
-        cognome=updated_user.get("cognome", ""),
-        username=updated_user["username"],
-        avatar=updated_user.get("avatar")
-    )
+    updated = await users_collection.find_one({"username": current_user["username"]})
+    return _build_token(updated)
 
 
 # ---------------------------------------------------------------------------
@@ -210,6 +251,16 @@ async def create_patient(
     files: List[UploadFile] = File(...),
     current_user: dict = Depends(get_current_user),
 ):
+    """
+    Crea un nuovo paziente e salva le 8 slice TC su disco (RF1.1, RF1.2).
+
+    Riceve i dati anagrafici e le immagini come multipart/form-data.
+    Valida che siano esattamente 8 file immagine, li converte in grayscale,
+    li salva nella cartella dedicata su filesystem, e crea il documento
+    paziente in MongoDB con tutti i campi del workflow inizializzati a None.
+
+    Lancia HTTP 400 se il numero di slice è diverso da 8 o se un file non è un'immagine valida.
+    """
     if len(files) != EXPECTED_NUM_SLICES:
         raise HTTPException(
             status_code=400,
@@ -223,9 +274,7 @@ async def create_patient(
             img = Image.open(io.BytesIO(content))
             img.load()
         except Exception:
-            raise HTTPException(
-                status_code=400, detail=f"File non valido: {f.filename}"
-            )
+            raise HTTPException(status_code=400, detail=f"File non valido: {f.filename}")
         images.append(img)
 
     patient_doc = {
@@ -247,26 +296,16 @@ async def create_patient(
 
     # Le immagini si salvano dopo aver creato il documento Mongo, così la cartella
     # su disco prende lo stesso _id del paziente (RF1: coppia immagine-paziente garantita).
-    # Limite noto: se save_patient_images fallisce, il documento Mongo resta senza immagini.
     image_paths = save_patient_images(patient_id, images)
     await patients_collection.update_one(
         {"_id": result.inserted_id}, {"$set": {"image_paths": image_paths}}
     )
-
     logger.info("Creato paziente %s con %d slice", patient_id, len(images))
 
-    return PatientStatus(
-        patient_id=patient_id,
-        nome=nome,
-        cognome=cognome,
-        codice_fiscale=codice_fiscale,
-        data_nascita=data_nascita,
-        created_at=patient_doc["created_at"],
-        num_slices=len(image_paths),
-        has_classification=False,
-        has_report=False,
-        validated=False,
-    )
+    # Aggiorniamo il doc locale per riusare _patient_status
+    patient_doc["_id"] = result.inserted_id
+    patient_doc["image_paths"] = image_paths
+    return _patient_status(patient_doc)
 
 
 # ---------------------------------------------------------------------------
@@ -274,46 +313,19 @@ async def create_patient(
 # ---------------------------------------------------------------------------
 @app.get("/patients", response_model=List[PatientStatus])
 async def list_patients(current_user: dict = Depends(get_current_user)):
-    cursor = patients_collection.find()
-    results = []
-    async for p in cursor:
-        results.append(
-            PatientStatus(
-                patient_id=str(p["_id"]),
-                nome=p["nome"],
-                cognome=p["cognome"],
-                codice_fiscale=p["codice_fiscale"],
-                data_nascita=date.fromisoformat(p["data_nascita"]),
-                created_at=p["created_at"],
-                num_slices=len(p["image_paths"]),
-                has_classification=p["findings"] is not None,
-                has_report=p["report_text"] is not None,
-                validated=p["validated"],
-                validated_by=p.get("validated_by"),
-            )
-        )
-    return results
+    """
+    Restituisce la lista di tutti i pazienti con lo stato del workflow (RF6.1).
+
+    Ogni paziente include i flag has_classification, has_report e validated
+    che il frontend usa per mostrare lo stato di avanzamento nella dashboard.
+    """
+    return [_patient_status(p) async for p in patients_collection.find()]
 
 
 @app.get("/patients/{patient_id}", response_model=PatientStatus)
 async def get_patient(patient_id: str, current_user: dict = Depends(get_current_user)):
-    p = await patients_collection.find_one({"_id": oid(patient_id)})
-    if p is None:
-        raise HTTPException(status_code=404, detail="Paziente non trovato")
-
-    return PatientStatus(
-        patient_id=str(p["_id"]),
-        nome=p["nome"],
-        cognome=p["cognome"],
-        codice_fiscale=p["codice_fiscale"],
-        data_nascita=date.fromisoformat(p["data_nascita"]),
-        created_at=p["created_at"],
-        num_slices=len(p["image_paths"]),
-        has_classification=p["findings"] is not None,
-        has_report=p["report_text"] is not None,
-        validated=p["validated"],
-        validated_by=p.get("validated_by"),
-    )
+    """Restituisce il dettaglio completo di un singolo paziente (RF6.1)."""
+    return _patient_status(await _get_patient(patient_id))
 
 
 # ---------------------------------------------------------------------------
@@ -323,18 +335,19 @@ async def get_patient(patient_id: str, current_user: dict = Depends(get_current_
 async def get_slice(
     patient_id: str, index: int, current_user: dict = Depends(get_current_user)
 ):
-    p = await patients_collection.find_one({"_id": oid(patient_id)})
-    if p is None:
-        raise HTTPException(status_code=404, detail="Paziente non trovato")
+    """
+    Restituisce una singola slice TC come immagine PNG (RF5.1, RF5.2).
 
+    L'indice va da 0 a 7 (le 8 slice caricate). L'immagine viene servita
+    direttamente dal filesystem via FileResponse.
+
+    Lancia HTTP 404 se il paziente non esiste o l'indice è fuori range.
+    """
+    p = await _get_patient(patient_id)
     paths = p["image_paths"]
-    if index < 0 or index >= len(paths):
+    if not 0 <= index < len(paths):
         raise HTTPException(status_code=404, detail="Slice non trovata")
-
-    with open(paths[index], "rb") as f:
-        buf = io.BytesIO(f.read())
-    buf.seek(0)
-    return StreamingResponse(buf, media_type="image/png")
+    return FileResponse(paths[index], media_type="image/png")
 
 
 # ---------------------------------------------------------------------------
@@ -344,58 +357,55 @@ async def get_slice(
 async def classify_patient(
     patient_id: str, force: bool = False, current_user: dict = Depends(get_current_user)
 ):
-    p = await patients_collection.find_one({"_id": oid(patient_id)})
-    if p is None:
-        raise HTTPException(status_code=404, detail="Paziente non trovato")
+    """
+    Esegue la classificazione delle patologie sulle 8 slice TC (RF2.1–RF2.4).
+
+    Carica le immagini dal filesystem, le passa al Modello I (4 classificatori
+    binari indipendenti) e salva i risultati nel documento paziente.
+
+    Il parametro force=True forza il ricalcolo anche se i findings esistono già;
+    di default restituisce i risultati salvati in precedenza senza rieseguire l'inferenza.
+
+    Lancia:
+      - HTTP 404 se il paziente non esiste
+      - HTTP 501 se il Modello I non è stato collegato (repo mancante)
+      - HTTP 500 per errori di inferenza imprevisti
+    """
+    p = await _get_patient(patient_id)
 
     # Se i findings esistono già e non si forza il ricalcolo, li restituiamo direttamente
     # senza ri-eseguire l'inferenza (che è costosa). force=True serve se si vuole rigenerare.
     if not force and p.get("findings") is not None:
-        findings = [FindingResult(**f) for f in p["findings"]]
         return ClassificationResponse(
             patient_id=patient_id,
-            findings=findings,
-            no_finding=p.get("no_finding", True)
+            findings=[FindingResult(**f) for f in p["findings"]],
+            no_finding=p.get("no_finding", True),
         )
-
-    images = [Image.open(path) for path in p["image_paths"]]
 
     try:
-        probs = classification_model.predict(images)
+        probs = classification_model.predict([Image.open(path) for path in p["image_paths"]])
     except NotImplementedError as e:
-        raise HTTPException(
-            status_code=501, detail=f"Modello I non ancora collegato: {e}"
-        )
+        raise HTTPException(status_code=501, detail=f"Modello I non ancora collegato: {e}")
     except Exception as e:
         logger.exception("Errore inferenza Modello I")
         raise HTTPException(status_code=500, detail=str(e))
 
-    findings = []
-    for label, prob in probs.items():
-        threshold = CLASS_THRESHOLDS.get(label, 0.5)
-        findings.append(
-            FindingResult(
-                label=label,
-                probability=round(prob, 4),
-                threshold=threshold,
-                positive=prob >= threshold,
-            )
+    findings = [
+        FindingResult(
+            label=label,
+            probability=round(prob, 4),
+            threshold=(t := CLASS_THRESHOLDS.get(label, 0.5)),
+            positive=prob >= t,
         )
+        for label, prob in probs.items()
+    ]
     no_finding = not any(f.positive for f in findings)
 
     await patients_collection.update_one(
-        {"_id": oid(patient_id)},
-        {
-            "$set": {
-                "findings": [f.model_dump() for f in findings],
-                "no_finding": no_finding,
-            }
-        },
+        {"_id": _oid(patient_id)},
+        {"$set": {"findings": [f.model_dump() for f in findings], "no_finding": no_finding}},
     )
-
-    return ClassificationResponse(
-        patient_id=patient_id, findings=findings, no_finding=no_finding
-    )
+    return ClassificationResponse(patient_id=patient_id, findings=findings, no_finding=no_finding)
 
 
 # ---------------------------------------------------------------------------
@@ -405,16 +415,28 @@ async def classify_patient(
 async def generate_report(
     patient_id: str, force: bool = False, current_user: dict = Depends(get_current_user)
 ):
-    p = await patients_collection.find_one({"_id": oid(patient_id)})
-    if p is None:
-        raise HTTPException(status_code=404, detail="Paziente non trovato")
+    """
+    Genera il referto neuroradiologico a partire dai findings (RF3.1, RNF6.1).
+
+    Prerequisito: la classificazione deve essere già stata eseguita (/classify).
+    Il Modello II (rule-based) compone un referto strutturato in 4 sezioni
+    (Tecnica, Reperti, Conclusioni, Raccomandazioni) usando template clinici.
+
+    Con force=False restituisce il referto già salvato se presente;
+    con force=True rigenera il referto (la formulazione sarà diversa,
+    il contenuto clinico identico).
+
+    Lancia:
+      - HTTP 400 se la classificazione non è ancora stata eseguita
+      - HTTP 404 se il paziente non esiste
+      - HTTP 500 per errori di generazione imprevisti
+    """
+    p = await _get_patient(patient_id)
 
     if not force and p.get("report_text") is not None:
         return ReportResponse(patient_id=patient_id, report_text=p["report_text"])
 
     # Il referto si genera dai findings — la classificazione deve venire prima.
-    # È lo stesso ordine di lavoro di un radiologo: prima si descrivono i reperti,
-    # poi si stende il referto. Genera 400 con messaggio esplicativo, non un referto vuoto.
     if p["findings"] is None:
         raise HTTPException(
             status_code=400,
@@ -430,9 +452,8 @@ async def generate_report(
         raise HTTPException(status_code=500, detail=str(e))
 
     await patients_collection.update_one(
-        {"_id": oid(patient_id)}, {"$set": {"report_text": report_text}}
+        {"_id": _oid(patient_id)}, {"$set": {"report_text": report_text}}
     )
-
     return ReportResponse(patient_id=patient_id, report_text=report_text)
 
 
@@ -440,9 +461,18 @@ async def generate_report(
 async def check_coherence(
     patient_id: str, current_user: dict = Depends(get_current_user)
 ):
-    p = await patients_collection.find_one({"_id": oid(patient_id)})
-    if p is None:
-        raise HTTPException(status_code=404, detail="Paziente non trovato")
+    """
+    Verifica la coerenza tra findings e testo del referto (RF4.1).
+
+    Per ogni classe patologica controlla se un finding positivo è menzionato
+    nel testo del referto e viceversa. Le discrepanze indicano che il medico
+    ha modificato manualmente il referto togliendo o aggiungendo riferimenti.
+
+    Prerequisito: sia la classificazione che il referto devono essere stati generati.
+
+    Lancia HTTP 400 se mancano findings o referto.
+    """
+    p = await _get_patient(patient_id)
     if not p["findings"] or not p["report_text"]:
         raise HTTPException(
             status_code=400,
@@ -450,24 +480,16 @@ async def check_coherence(
         )
 
     report_lower = p["report_text"].lower()
-    issues = []
-    has_mismatch = False
-
-    for finding in p["findings"]:
-        mentioned = finding["label"].lower().replace("_", " ") in report_lower
-        if finding["positive"] != mentioned:
-            has_mismatch = True
-        issues.append(
-            CoherenceIssue(
-                label=finding["label"],
-                in_findings=finding["positive"],
-                mentioned_in_report=mentioned,
-            )
+    issues = [
+        CoherenceIssue(
+            label=f["label"],
+            in_findings=f["positive"],
+            mentioned_in_report=(f["label"].lower().replace("_", " ") in report_lower),
         )
-
-    return CoherenceCheckResponse(
-        patient_id=patient_id, issues=issues, has_mismatch=has_mismatch
-    )
+        for f in p["findings"]
+    ]
+    has_mismatch = any(i.in_findings != i.mentioned_in_report for i in issues)
+    return CoherenceCheckResponse(patient_id=patient_id, issues=issues, has_mismatch=has_mismatch)
 
 
 # ---------------------------------------------------------------------------
@@ -479,14 +501,17 @@ async def update_report(
     body: ReportUpdateRequest,
     current_user: dict = Depends(get_current_user),
 ):
-    p = await patients_collection.find_one({"_id": oid(patient_id)})
-    if p is None:
-        raise HTTPException(status_code=404, detail="Paziente non trovato")
+    """
+    Modifica manuale del testo del referto (RF3.2, RF3.4).
 
+    Sia il medico che lo specializzando possono editare il referto.
+    Dopo una modifica manuale, il controllo di coerenza potrebbe
+    rilevare discrepanze con i findings originali.
+    """
+    await _get_patient(patient_id)  # verifica esistenza
     await patients_collection.update_one(
-        {"_id": oid(patient_id)}, {"$set": {"report_text": body.report_text}}
+        {"_id": _oid(patient_id)}, {"$set": {"report_text": body.report_text}}
     )
-
     return ReportResponse(patient_id=patient_id, report_text=body.report_text)
 
 
@@ -497,28 +522,30 @@ async def update_report(
 async def validate_patient(
     patient_id: str, current_user: dict = Depends(require_role("medico"))
 ):
-    p = await patients_collection.find_one({"_id": oid(patient_id)})
-    if p is None:
-        raise HTTPException(status_code=404, detail="Paziente non trovato")
+    """
+    Valida il referto con firma digitale del medico (RF5.3).
+
+    Operazione riservata esclusivamente al ruolo "medico" — lo specializzando
+    non può validare. La firma include il titolo professionale corretto
+    in base al genere (Dr. / Dr.ssa) seguito dal cognome.
+
+    Prerequisito: il referto deve essere già stato generato.
+    Lancia HTTP 400 se non esiste un referto da validare.
+    """
+    p = await _get_patient(patient_id)
     if not p["report_text"]:
         raise HTTPException(status_code=400, detail="Nessun referto da validare")
 
     # La firma include il titolo corretto in base al genere — dettaglio che conta
     # in un documento clinico e che la commissione noterebbe se sbagliato.
-    gender = current_user.get("gender", "M")
-    cognome = current_user.get("cognome", current_user["username"])
-    title = "Dr." if gender == "M" else "Dr.ssa"
-    signature = f"{title} {cognome}"
+    title = "Dr." if current_user.get("gender", "M") == "M" else "Dr.ssa"
+    signature = f"{title} {current_user.get('cognome', current_user['username'])}"
 
     await patients_collection.update_one(
-        {"_id": oid(patient_id)},
+        {"_id": _oid(patient_id)},
         {"$set": {"validated": True, "validated_by": signature}},
     )
-    return {
-        "patient_id": patient_id,
-        "validated": True,
-        "validated_by": signature,
-    }
+    return {"patient_id": patient_id, "validated": True, "validated_by": signature}
 
 
 # ---------------------------------------------------------------------------
@@ -528,13 +555,18 @@ async def validate_patient(
 async def export_report(
     patient_id: str, current_user: dict = Depends(get_current_user)
 ):
-    p = await patients_collection.find_one({"_id": oid(patient_id)})
-    if p is None:
-        raise HTTPException(status_code=404, detail="Paziente non trovato")
+    """
+    Esporta il referto in formato testo leggibile (RF6.2).
+
+    Compone un documento testuale con intestazione anagrafica, findings positivi,
+    stato di validazione e testo completo del referto. Restituito come
+    Content-Type text/plain, scaricabile direttamente dal browser.
+
+    Lancia HTTP 400 se il referto non è ancora stato generato.
+    """
+    p = await _get_patient(patient_id)
     if not p["report_text"]:
-        raise HTTPException(
-            status_code=400, detail="Nessun referto generato per questo paziente"
-        )
+        raise HTTPException(status_code=400, detail="Nessun referto generato per questo paziente")
 
     findings_str = "\n".join(
         f"- {f['label']}: {f['probability']:.2f} (soglia {f['threshold']})"

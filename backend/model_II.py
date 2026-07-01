@@ -1,26 +1,17 @@
 """
-Modello II — Generazione referto (RF3), v3.
+Modello II — Generazione referto (RF3).
 
 Non è un modello generativo addestrato — è un generatore rule-based che compone
-frasi template a partire dai findings del Modello I. La scelta non è una scorciatoia:
-labels.csv ha solo etichette binarie, nessun referto testuale libero, quindi non c'è
-nemmeno un dataset su cui addestrare un modello visione→testo. Va dichiarato
-esplicitamente nella tesi.
+frasi template a partire dai findings del Modello I.
 
 Il vantaggio collaterale di questo approccio è che il referto non può contraddire
 i findings per costruzione — il testo viene generato direttamente da loro, quindi
 il check di coerenza è quasi sempre verde tranne se il medico modifica manualmente
 il testo togliendo un finding positivo.
 
-Rispetto alla v2:
-- Varianti aggiunte ovunque: TECNICA (3), REPERTI negativo (3), CONNECTORS (8),
-  RACCOMANDAZIONI (2-3 per classe), CONCLUSIONI (4 intro + 3 negative)
-- Frase introduttiva quando ci sono ≥2 findings positivi nello stesso referto
-- Tutto usa lo stesso rng, quindi seed funziona ancora su tutte le sezioni
 
 Se chiami /report più volte sullo stesso paziente ottieni testo diverso ogni volta
-(il contenuto clinico è identico, varia la formulazione). Per test riproducibili
-passa seed=<intero> a generate_from_findings().
+(il contenuto clinico è identico, varia la formulazione).
 """
 
 import logging
@@ -29,8 +20,6 @@ from typing import Dict, List, Optional
 
 logger = logging.getLogger("model_II")
 
-# Ordine fisso delle classi nel referto — rispecchia la priorità clinica
-# convenzionale in neuroradiologia (emorragia e ischemia acuta prima delle croniche).
 LABEL_ORDER = ["Blood", "Ischemia", "Chronic_Ischemia", "Edema", "Mass"]
 
 # Le frasi dentro ogni categoria sono clinicamente equivalenti tra loro —
@@ -307,7 +296,9 @@ def _compose_reperti(findings: List[dict], rng: random.Random) -> str:
     return " ".join(sentences)
 
 
-def _compose_conclusioni(findings: List[dict], no_finding: bool, rng: random.Random) -> str:
+def _compose_conclusioni(
+    findings: List[dict], no_finding: bool, rng: random.Random
+) -> str:
     """Riga di conclusione — phrasing dell'introduzione variabile."""
     if no_finding:
         return rng.choice(CONCLUSIONI_NEGATIVA)
@@ -317,7 +308,9 @@ def _compose_conclusioni(findings: List[dict], no_finding: bool, rng: random.Ran
     return intro + " " + ", ".join(positive_labels) + "."
 
 
-def _compose_raccomandazioni(findings: List[dict], no_finding: bool, rng: random.Random) -> str:
+def _compose_raccomandazioni(
+    findings: List[dict], no_finding: bool, rng: random.Random
+) -> str:
     """
     Raccomandazioni per ogni finding positivo.
     Se più classi condividono per caso la stessa frase (non dovrebbe succedere
@@ -326,23 +319,17 @@ def _compose_raccomandazioni(findings: List[dict], no_finding: bool, rng: random
     if no_finding:
         return "Nessuna raccomandazione specifica; follow-up secondo pratica clinica standard."
 
-    lines = []
-    for f in findings:
-        if f["positive"] and f["label"] in RECOMMENDATIONS:
-            lines.append(rng.choice(RECOMMENDATIONS[f["label"]]))
+    lines = [
+        rng.choice(RECOMMENDATIONS[f["label"]])
+        for f in findings
+        if f["positive"] and f["label"] in RECOMMENDATIONS
+    ]
 
     if not lines:
         return "Nessuna raccomandazione specifica; follow-up secondo pratica clinica standard."
 
-    # deduplicazione preservando l'ordine
-    seen: set = set()
-    unique_lines = []
-    for line in lines:
-        if line not in seen:
-            unique_lines.append(line)
-            seen.add(line)
-
-    return " ".join(unique_lines)
+    # deduplicazione preservando l'ordine (dict.fromkeys mantiene ordine in Python 3.7+)
+    return " ".join(dict.fromkeys(lines))
 
 
 class ReportModel:
@@ -355,7 +342,9 @@ class ReportModel:
         self.model = "rule_based_v3_nondeterministic"
 
     def load(self):
-        logger.info("Modello II v3: nessun caricamento necessario, generatore rule-based")
+        logger.info(
+            "Modello II v3: nessun caricamento necessario, generatore rule-based"
+        )
 
     def generate_from_findings(
         self,
@@ -377,7 +366,11 @@ class ReportModel:
         rng = random.Random(seed)
 
         tecnica = rng.choice(TECNICA_TEMPLATES).format(n_slices=n_slices)
-        reperti = rng.choice(NEGATIVE_ALL_TEXTS) if no_finding else _compose_reperti(findings, rng)
+        reperti = (
+            rng.choice(NEGATIVE_ALL_TEXTS)
+            if no_finding
+            else _compose_reperti(findings, rng)
+        )
         conclusioni = _compose_conclusioni(findings, no_finding, rng)
         raccomandazioni = _compose_raccomandazioni(findings, no_finding, rng)
 
