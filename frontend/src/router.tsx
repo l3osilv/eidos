@@ -1,35 +1,31 @@
 import { useState, useEffect } from 'react';
 
-// Set di listener da notificare ad ogni navigate() — usato per sincronizzare
-// l'hook useLocation senza dipendere da un router esterno
+// Mantengo un array di listener per gestire il cambio di rotta.
+// Ho preferito creare questo custom hook invece di installare react-router, che era eccessivo per poche pagine.
 const navigationListeners = new Set<() => void>();
 
-// Aggiorna la URL del browser e notifica tutti i listener
+// Aggiorno la history del browser e notifico i componenti in ascolto
 export function navigate(to: string) {
   window.history.pushState(null, '', to);
   navigationListeners.forEach((listener) => listener());
 }
 
-// Hook che espone il pathname corrente e si aggiorna ad ogni navigate()
-// o pressione del bottone indietro del browser
+// Hook custom per leggere l'URL corrente. Causa un re-render in automatico se chiamo navigate()
+// o se l'utente usa il tasto "Indietro" del browser.
 export function useLocation() {
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
 
   useEffect(() => {
-    const handlePopState = () => {
+    const handleLocationChange = () => {
       setCurrentPath(window.location.pathname);
     };
 
-    const handleNavigationEvent = () => {
-      setCurrentPath(window.location.pathname);
-    };
-
-    window.addEventListener('popstate', handlePopState);
-    navigationListeners.add(handleNavigationEvent);
+    window.addEventListener('popstate', handleLocationChange);
+    navigationListeners.add(handleLocationChange);
 
     return () => {
-      window.removeEventListener('popstate', handlePopState);
-      navigationListeners.delete(handleNavigationEvent);
+      window.removeEventListener('popstate', handleLocationChange);
+      navigationListeners.delete(handleLocationChange);
     };
   }, []);
 

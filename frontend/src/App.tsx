@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import {
-  getApiConfig, setApiConfig, setTokenMemory,
+  setApiConfig, setTokenMemory,
   setCurrentUser, getCurrentUser, apiGetPatients, apiCreatePatient
 } from './api';
-import { Patient, User, ConnectionSettings } from './types';
+import { Patient, User } from './types';
 import Header from './components/Header';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -16,25 +16,23 @@ import { useLocation, navigate } from './router';
 import LoadingNotice from './components/LoadingNotice';
 
 export default function App() {
-  const connectionConfig: ConnectionSettings = getApiConfig();
-
   const [currentUser, setSessionUser] = useState<User | null>(getCurrentUser());
   const [patients, setPatients] = useState<Patient[]>([]);
   const currentPath = useLocation();
 
-  // ID del paziente estratto direttamente dalla URL — niente state dedicato,
-  // la URL è la fonte di verità per la navigazione
+  // Leggo l'ID del paziente direttamente dall'URL tramite una regex. 
+  // Così evito di gestire uno stato globale aggiuntivo, uso l'URL come fonte di verità.
   const match = currentPath.match(/^\/patients\/([^/]+)$/);
   const selectedPatientId = match ? match[1] : null;
 
-  // Indicatori di stato globali per loading ed errori della lista pazienti
+  // Flag per gestire caricamenti ed errori nella dashboard principale
   const [isLoadingPatients, setIsLoadingPatients] = useState<boolean>(false);
   const [listError, setListError] = useState<string | null>(null);
   const [isFormSubmitting, setIsFormSubmitting] = useState<boolean>(false);
 
-  const apiBaseUrl = connectionConfig.baseUrl;
+  const apiBaseUrl = 'http://localhost:8000';
 
-  // Ricarichiamo i pazienti ogni volta che cambia l'URL del backend o l'utente loggato
+  // Ricarico la lista dei pazienti ogni volta che loggo un utente o se cambia il baseUrl
   useEffect(() => {
     setApiConfig(apiBaseUrl);
     if (currentUser) {
@@ -42,8 +40,8 @@ export default function App() {
     }
   }, [apiBaseUrl, currentUser?.username]);
 
-  // Guardia di navigazione: gli utenti non autenticati finiscono sempre su /login
-  // e quelli autenticati non possono tornare su /login o /register
+  // Auth guard di base: se non trovo il currentUser reindirizzo su /login,
+  // se invece è loggato evito che torni su /login o /register
   useEffect(() => {
     if (!currentUser) {
       if (currentPath !== '/login' && currentPath !== '/register') {
@@ -93,7 +91,7 @@ export default function App() {
     try {
       const created = await apiCreatePatient(formData);
 
-      // Inseriamo il nuovo paziente in cima alla lista senza ricaricare tutto
+      // Inserisco il nuovo paziente in cima all'array locale per evitare una nuova GET al backend
       setPatients((prev) => [created, ...prev]);
 
       navigate('/dashboard');
@@ -120,7 +118,7 @@ export default function App() {
     navigate('/profile');
   };
 
-  // Recupera l'oggetto del paziente correntemente selezionato
+  // Recupero l'oggetto del paziente correntemente selezionato
   const activeSelectedPatient = patients.find((p) => p.patient_id === selectedPatientId);
 
   return (
@@ -197,7 +195,6 @@ export default function App() {
                     <PatientDetail
                       patient={activeSelectedPatient}
                       currentUser={currentUser}
-                      config={connectionConfig}
                       onBack={handleBackToDashboard}
                       onUpdatePatientState={handleUpdatePatientItemState}
                     />
