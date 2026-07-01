@@ -35,6 +35,8 @@ from contextlib import asynccontextmanager
 from datetime import date, datetime
 from typing import List
 
+import torch
+
 from bson import ObjectId
 from bson.errors import InvalidId
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
@@ -162,8 +164,6 @@ def health():
     Utile per verificare che il backend sia avviato correttamente e che i checkpoint
     siano stati trovati. Non richiede autenticazione.
     """
-    import torch
-
     return {
         "status": "ok",
         "device": "cuda" if torch.cuda.is_available() else "cpu",

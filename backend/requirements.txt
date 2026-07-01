@@ -5,11 +5,9 @@ pillow>=10.0
 torch>=2.0
 motor>=3.4
 pymongo>=4.6
-passlib[bcrypt]>=1.7
+bcrypt>=4.0
 python-jose[cryptography]>=3.3
 python-dotenv>=1.0
 numpy>=2.5
-dotenv
 opencv-python
 timm
-scipy

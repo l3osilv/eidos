@@ -17,7 +17,7 @@ import json
 import logging
 import os
 import sys
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 import cv2
 import numpy as np
@@ -28,6 +28,10 @@ logger = logging.getLogger("model_I")
 
 # GPU se disponibile, altrimenti CPU — vedi RNF7.1
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# Costanti normalizzazione ImageNet — allocate una sola volta a livello di modulo
+_IMAGENET_MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
+_IMAGENET_STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
 
 # Path alla repo clonata (deve contenere stage2_2d_slice_level/.../src/).
 # Imposta SSL_BRAINCT_SRC nell'ambiente, altrimenti usa il path relativo di default
@@ -108,15 +112,6 @@ CLASS_THRESHOLDS: Dict[str, float] = {
     "Edema": 0.5,
 }
 
-# AUC di riferimento — per ora quelli del README della repo originale (densenet121 + avg).
-# Vanno sostituiti con i valori reali dei tuoi checkpoint non appena hai i risultati
-# di validazione. Questi vengono usati solo per logging e per l'endpoint /health.
-CLASS_RELIABILITY_AUC: Dict[str, Optional[float]] = {
-    "Blood": 0.568,
-    "Mass": 0.589,
-    "Edema": 0.756,
-    "Ischemia": None,  # non ancora misurato sui nostri run
-}
 
 
 def _build_cfg(label: str):
@@ -165,20 +160,12 @@ def _build_architecture(label: str) -> torch.nn.Module:
     return MultiLabelMILClassifier(cfg, ssl_weights=None)
 
 
-def _extract_state_dict(checkpoint) -> dict:
+def _extract_state_dict(checkpoint: dict) -> dict:
     """
-    I checkpoint PyTorch non hanno un formato unico: a volte è uno state_dict
-    puro, a volte è un dict con chiave 'model_state_dict' o 'state_dict'.
-    Questa funzione gestisce entrambi i casi per non dover dipendere dal formato
-    esatto usato dallo script di training.
+    Estrae lo state_dict da un checkpoint PyTorch, indipendentemente dal formato
+    (chiave 'model_state_dict', 'state_dict', o state_dict diretto).
     """
-    if isinstance(checkpoint, dict):
-        for key in ("model_state_dict", "state_dict"):
-            if key in checkpoint:
-                return checkpoint[key]
-        # Nessuna chiave nota: assumiamo sia già lo state_dict diretto
-        return checkpoint
-    return checkpoint
+    return checkpoint.get("model_state_dict", checkpoint.get("state_dict", checkpoint))
 
 
 def _build_preprocessor_from_config(json_cfg: dict):
@@ -310,13 +297,7 @@ class ClassificationModel:
             processed = np.stack([arr.astype(np.float32) / 255.0] * 3, axis=-1)
 
         resized = cv2.resize(processed, self.img_size, interpolation=cv2.INTER_LINEAR)
-
-        # Normalizzazione ImageNet — stessa usata da timm per i pretrained
-        mean = np.array([0.485, 0.456, 0.406], dtype=np.float32)
-        std = np.array([0.229, 0.224, 0.225], dtype=np.float32)
-        normalized = (resized - mean) / std
-
-        return normalized
+        return (resized - _IMAGENET_MEAN) / _IMAGENET_STD
 
     def _preprocess(self, images: List[Image.Image]) -> torch.Tensor:
         """

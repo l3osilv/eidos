@@ -15,11 +15,12 @@ Configurazione:
 """
 
 import os
+from pathlib import Path
 from typing import List
 
 from PIL import Image
 
-IMAGES_ROOT = os.getenv("IMAGES_ROOT", "storage/images")
+IMAGES_ROOT = Path(os.getenv("IMAGES_ROOT", "storage/images"))
 
 
 def save_patient_images(patient_id: str, images: List[Image.Image]) -> List[str]:
@@ -38,17 +39,12 @@ def save_patient_images(patient_id: str, images: List[Image.Image]) -> List[str]
     Returns:
         Lista di path ai file PNG salvati (es. ['storage/images/abc123/slice_0.png', ...]).
     """
-    folder = os.path.join(IMAGES_ROOT, patient_id)
-    os.makedirs(folder, exist_ok=True)
+    folder = IMAGES_ROOT / patient_id
+    folder.mkdir(parents=True, exist_ok=True)
 
     paths = []
     for i, img in enumerate(images):
-        path = os.path.join(folder, f"slice_{i}.png")
-        img.convert("L").save(path, format="PNG")  # scala di grigi, coerente con CT
-        paths.append(path)
+        p = folder / f"slice_{i}.png"
+        img.convert("L").save(p, format="PNG")  # scala di grigi, coerente con CT
+        paths.append(str(p))
     return paths
-
-
-def load_image(path: str) -> Image.Image:
-    """Carica un'immagine dal filesystem. Usata internamente per rileggere le slice salvate."""
-    return Image.open(path)

@@ -44,13 +44,12 @@ VALID_ROLES = {"medico", "specializzando"}
 
 def hash_password(password: str) -> str:
     """Genera l'hash bcrypt della password con salt casuale per la memorizzazione sicura."""
-    salt = bcrypt.gensalt()
-    return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
 
 def verify_password(password: str, hashed: str) -> bool:
     """Confronta la password in chiaro con l'hash bcrypt salvato in MongoDB."""
-    return bcrypt.checkpw(password.encode("utf-8"), hashed.encode("utf-8"))
+    return bcrypt.checkpw(password.encode(), hashed.encode())
 
 
 def create_access_token(data: dict) -> str:
@@ -61,10 +60,10 @@ def create_access_token(data: dict) -> str:
     calcolato automaticamente. Il token viene poi incluso dal frontend
     nell'header Authorization di ogni richiesta successiva.
     """
-    to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return jwt.encode(
+        {**data, "exp": datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)},
+        SECRET_KEY, algorithm=ALGORITHM,
+    )
 
 
 async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:

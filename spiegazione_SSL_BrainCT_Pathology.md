@@ -292,15 +292,3 @@ with torch.no_grad():
     logits, attention_weights = model(input_tensor, return_attention=True)
     probability = torch.sigmoid(logits).item()  # Es: 0.73 = 73% probabilità Blood
 ```
-
-### 5.4. Bug Noti nel Progetto (rilevati dall'analisi del codice)
-
-| Bug | File | Descrizione |
-|---|---|---|
-| `preprocessing.py` mancante | `stage1_3d_volumetric/supervised_finetuning/src/dataset.py` | Il file viene importato ma non esiste nella cartella Stage 1. Soluzione: copiare `preprocessing.py` da Stage 2. |
-| `SimCLR.__init__` firma errata | `stage2_2d_slice_level/ssl_pretraining/scripts/train_ssl.py` (r.71) | Lo script passa `temperature` come kwarg diretto, ma la classe `SimCLR` accetta solo `cfg`. Soluzione: usare `create_ssl_model(cfg)`. |
-| Dati mancanti | Cartella `data/` | Non inclusa nel repo per ragioni di privacy. Richiede i file originali dagli autori, o generazione sintetica per test. |
-
----
-
-*Ultima modifica: Aprile 2026*
