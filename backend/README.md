@@ -66,7 +66,7 @@ I modelli di deep learning vengono caricati una sola volta all'avvio e condivisi
 | Deep Learning      | **PyTorch** ≥ 2.0, **timm**                       |
 | Image Processing   | **Pillow** ≥ 10.0, **OpenCV**, **NumPy**          |
 | Validazione dati   | **Pydantic v2** (integrato in FastAPI)             |
-| Python             | ≥ 3.14                                            |
+| Python             | ≥ 3.11                                            |
 
 ---
 
@@ -105,7 +105,7 @@ backend/
 
 ## Requisiti di sistema
 
-- **Python** ≥ 3.14
+- **Python** ≥ 3.11
 - **MongoDB** in esecuzione locale (default: `mongodb://localhost:27017`)
 - **Repo SSL-BrainCT-Pathology** clonata in locale (necessaria per l'inferenza del Modello I)
 - **GPU CUDA** (opzionale) — il sistema funziona anche su CPU, ma l'inferenza è più lenta

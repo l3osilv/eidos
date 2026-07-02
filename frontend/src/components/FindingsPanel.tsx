@@ -1,4 +1,4 @@
-import { ClipboardList, RefreshCw, Activity, AlertCircle } from 'lucide-react';
+import { ClipboardList, Activity, AlertCircle } from 'lucide-react';
 import { Finding, Patient } from '../types';
 
 interface FindingsPanelProps {
@@ -19,11 +19,11 @@ const LABEL_COLORS = {
 };
 
 const BAR_COLORS = {
-  Blood: { positive: 'bg-red-600', negative: 'bg-slate-405 bg-slate-400' },
-  Ischemia: { positive: 'bg-orange-500', negative: 'bg-slate-405 bg-slate-400' },
-  Chronic_Ischemia: { positive: 'bg-amber-500', negative: 'bg-slate-405 bg-slate-400' },
-  Edema: { positive: 'bg-indigo-500', negative: 'bg-slate-405 bg-slate-400' },
-  Mass: { positive: 'bg-purple-500', negative: 'bg-slate-405 bg-slate-400' },
+  Blood: { positive: 'bg-red-600', negative: 'bg-slate-400' },
+  Ischemia: { positive: 'bg-orange-500', negative: 'bg-slate-400' },
+  Chronic_Ischemia: { positive: 'bg-amber-500', negative: 'bg-slate-400' },
+  Edema: { positive: 'bg-indigo-500', negative: 'bg-slate-400' },
+  Mass: { positive: 'bg-purple-500', negative: 'bg-slate-400' },
 };
 
 const LABEL_LABELS = {
@@ -40,7 +40,6 @@ export default function FindingsPanel({
   isClassifying,
   onExecute,
 }: FindingsPanelProps) {
-
   return (
     <section className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm" id="findings-panel">
       <h3 className="text-xs font-bold text-slate-400 font-mono uppercase tracking-wider mb-3.5 flex items-center gap-1.5">
@@ -81,7 +80,6 @@ export default function FindingsPanel({
         <div className="space-y-3.5" id="classification-findings-container">
           <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
             {findings.map((f) => {
-              const labelColors = LABEL_COLORS[f.label as keyof typeof LABEL_COLORS];
               const barColors = BAR_COLORS[f.label as keyof typeof BAR_COLORS];
               const labelLabels = LABEL_LABELS;
 
@@ -103,7 +101,7 @@ export default function FindingsPanel({
                     <span className={`text-sm font-semibold font-mono ${f.positive ? 'text-red-600 font-bold' : 'text-slate-500'}`}>
                       {getPercentageString(f.probability)}
                     </span>
-                    <span className="text-[9px] text-slate-405 font-mono text-slate-450">soglia {getPercentageString(f.threshold)}</span>
+                    <span className="text-[9px] text-slate-400 font-mono">soglia {getPercentageString(f.threshold)}</span>
                   </div>
 
                   <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden mt-1 p-0">

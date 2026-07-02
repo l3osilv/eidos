@@ -1,29 +1,9 @@
 """
 Modello II — Generazione referto (RF3).
-
-Due livelli, in sequenza:
-1. Generatore rule-based (deterministico nella struttura, non deterministico
-   nella scelta delle varianti) che compone frasi template a partire dai
-   findings del Modello I. Questo scheletro è SEMPRE generato e SEMPRE
-   clinicamente corretto per costruzione, perché deriva direttamente dai
-   findings — è la rete di sicurezza del sistema.
-2. Rifinitura linguistica opzionale via Anthropic API (llm_refiner.py), che
-   riformula lo scheletro in prosa più naturale SENZA poter alterare il
-   contenuto clinico. Attiva solo se ANTHROPIC_API_KEY è configurata e
-   ENABLE_LLM_REFINEMENT non è disattivato esplicitamente. In caso di
-   qualunque problema (API non raggiungibile, risposta che non supera la
-   validazione di coerenza) si ricade silenziosamente sullo scheletro.
-
-Il vantaggio architetturale di questo schema è che il referto non può
-contraddire i findings per costruzione: lo scheletro deriva da loro
-direttamente, e la rifinitura LLM è validata contro di essi prima di
-essere accettata — quindi il check di coerenza (/coherence in main.py)
-resta verde anche con la rifinitura attiva, salvo modifica manuale
-successiva del medico.
-
-Se chiami /report più volte sullo stesso paziente ottieni testo diverso
-ogni volta (il contenuto clinico è identico, varia la formulazione, sia
-nel ramo rule-based puro sia in quello rifinito dall'LLM).
+Composto da due fasi sequenziali:
+  1. Generatore rule-based che produce un testo strutturato garantito corretto.
+  2. Rifinitura linguistica opzionale tramite LLM (llm_refiner.py) per uno stile naturale.
+     Il testo rifinito viene scartato se non supera il controllo di coerenza clinica.
 """
 
 import logging
@@ -35,18 +15,10 @@ import llm_refiner
 
 logger = logging.getLogger("model_II")
 
-# Se True e ANTHROPIC_API_KEY è configurata, il testo rule-based viene
-# passato a llm_refiner per una rifinitura linguistica. Se la rifinitura
-# fallisce o non supera la validazione di sicurezza, si ricade sempre
-# sullo scheletro rule-based — questo flag non introduce alcun rischio
-# di indisponibilità, solo un'eventuale differenza di stile.
 ENABLE_LLM_REFINEMENT = os.getenv("ENABLE_LLM_REFINEMENT", "true").lower() == "true"
 
 LABEL_ORDER = ["Blood", "Ischemia", "Chronic_Ischemia", "Edema", "Mass"]
 
-# Le frasi dentro ogni categoria sono clinicamente equivalenti tra loro —
-# stesso contenuto diagnostico, formulazione diversa. Non aggiungere varianti
-# che cambiano il significato clinico, solo la forma sintattica.
 FINDING_TEMPLATES: Dict[str, Dict[str, List[str]]] = {
     "Blood": {
         "negative": [
@@ -99,7 +71,7 @@ FINDING_TEMPLATES: Dict[str, Dict[str, List[str]]] = {
             "Non si osservano esiti ischemici cronici di rilievo.",
             "Assenza di alterazioni riferibili a sofferenza ischemica cronica.",
             "Non si identificano aree di gliosi o ipodensità riferibili a esiti ischemici pregressi di rilievo.",
-            "Nessun reperto di sofferenza ischemica cronica significativa è individuabile.",
+            "Nessun reperto di sofferenza ischemica cronica significativa è insoluto.",
         ],
         "sospetta": [
             "Si segnalano minime aree di ipodensità, di incerto significato, non chiaramente attribuibili a esiti ischemici cronici.",
@@ -165,8 +137,6 @@ FINDING_TEMPLATES: Dict[str, Dict[str, List[str]]] = {
     },
 }
 
-# Connettori tra findings positivi consecutivi — ne servono abbastanza da non
-# ripetere la stessa frase su referti con 2-3 patologie positive.
 CONNECTORS: List[str] = [
     "Si associa inoltre il seguente reperto:",
     "Si segnala inoltre quanto segue:",
@@ -178,8 +148,6 @@ CONNECTORS: List[str] = [
     "Reperto aggiuntivo di interesse clinico:",
 ]
 
-# Frase di apertura quando ci sono ≥2 findings positivi — serve a dare un contesto
-# prima di elencarli uno a uno, invece di iniziare direttamente con il primo finding.
 MULTI_FINDING_INTRO: List[str] = [
     "L'esame evidenzia la coesistenza di più reperti patologici, descritti di seguito.",
     "Sono presenti più alterazioni degne di nota, dettagliate in sequenza.",
@@ -187,8 +155,6 @@ MULTI_FINDING_INTRO: List[str] = [
     "Si rilevano contestualmente diversi reperti di interesse clinico, elencati di seguito.",
 ]
 
-# Le raccomandazioni hanno 2-3 varianti per classe — così due referti con la stessa
-# singola patologia positiva non producono testo identico parola per parola.
 RECOMMENDATIONS: Dict[str, List[str]] = {
     "Blood": [
         "Si raccomanda valutazione neurochirurgica urgente e correlazione con il quadro clinico.",
@@ -217,8 +183,6 @@ RECOMMENDATIONS: Dict[str, List[str]] = {
     ],
 }
 
-# Testo della sezione REPERTI per esame completamente negativo —
-# 3 varianti così non è sempre identico anche quando il caso è negativo.
 NEGATIVE_ALL_TEXTS: List[str] = [
     (
         "Non si rilevano alterazioni significative dell'attenuometria parenchimale. "
@@ -237,16 +201,12 @@ NEGATIVE_ALL_TEXTS: List[str] = [
     ),
 ]
 
-# Sezione TECNICA — 3 modi diversi di dire la stessa cosa.
-# Il terzo menziona esplicitamente il preprocessing, utile se si vuole
-# che il referto documenti anche la pipeline usata.
 TECNICA_TEMPLATES: List[str] = [
     "Esame TC dell'encefalo, {n_slices} scansioni assiali analizzate. Pre-elaborazione standard applicata alle immagini.",
     "TC cerebrale eseguita su {n_slices} sezioni assiali. Le immagini sono state sottoposte a pre-elaborazione standardizzata prima dell'analisi.",
     "Analisi di {n_slices} scansioni assiali di TC encefalo. Pre-processing standardizzato (circle masking, multi-window, CLAHE) applicato prima dell'elaborazione automatica.",
 ]
 
-# Introduzione variabile per la riga delle conclusioni positive
 CONCLUSIONI_INTRO_POSITIVE: List[str] = [
     "Quadro TC compatibile con:",
     "Il quadro tomografico è compatibile con:",
@@ -254,7 +214,6 @@ CONCLUSIONI_INTRO_POSITIVE: List[str] = [
     "Le scansioni analizzate sono compatibili con:",
 ]
 
-# Conclusione per esame negativo
 CONCLUSIONI_NEGATIVA: List[str] = [
     "Quadro TC nei limiti, in assenza di reperti patologici significativi.",
     "Esame TC privo di reperti patologici di rilievo nelle scansioni analizzate.",
@@ -263,14 +222,6 @@ CONCLUSIONI_NEGATIVA: List[str] = [
 
 
 def _severity_level(probability: float, threshold: float) -> str:
-    """
-    Restituisce il livello di confidenza del modello — non è una valutazione
-    della gravità clinica, è solo quanto la probabilità supera la soglia.
-    Tre livelli:
-      - margin < 0.08  → "sospetta"  (appena sopra soglia, poco convincente)
-      - prob >= 0.85   → "evidente"  (il modello è abbastanza sicuro)
-      - il resto       → "probabile" (via di mezzo)
-    """
     margin = probability - threshold
     if margin < 0.08:
         return "sospetta"
@@ -280,12 +231,6 @@ def _severity_level(probability: float, threshold: float) -> str:
 
 
 def _compose_reperti(findings: List[dict], rng: random.Random) -> str:
-    """
-    Compone la sezione REPERTI.
-    Se ci sono ≥2 findings positivi aggiunge una frase introduttiva prima di
-    elencarli — evita di iniziare direttamente con il primo finding senza contesto.
-    Tra un finding positivo e il successivo inserisce un connettore variabile.
-    """
     by_label = {f["label"]: f for f in findings}
     positive_count = sum(1 for f in findings if f["positive"])
     sentences = []
@@ -306,7 +251,6 @@ def _compose_reperti(findings: List[dict], rng: random.Random) -> str:
             level = _severity_level(f["probability"], f["threshold"])
             sentence = rng.choice(templates[level])
 
-            # Connettore tra findings positivi — dal secondo in poi
             if positive_count_so_far > 0:
                 sentences.append(rng.choice(CONNECTORS))
 
@@ -321,7 +265,6 @@ def _compose_reperti(findings: List[dict], rng: random.Random) -> str:
 def _compose_conclusioni(
     findings: List[dict], no_finding: bool, rng: random.Random
 ) -> str:
-    """Riga di conclusione — phrasing dell'introduzione variabile."""
     if no_finding:
         return rng.choice(CONCLUSIONI_NEGATIVA)
 
@@ -333,11 +276,6 @@ def _compose_conclusioni(
 def _compose_raccomandazioni(
     findings: List[dict], no_finding: bool, rng: random.Random
 ) -> str:
-    """
-    Raccomandazioni per ogni finding positivo.
-    Se più classi condividono per caso la stessa frase (non dovrebbe succedere
-    con le varianti attuali, ma meglio gestirlo) i duplicati vengono eliminati.
-    """
     if no_finding:
         return "Nessuna raccomandazione specifica; follow-up secondo pratica clinica standard."
 
@@ -350,24 +288,19 @@ def _compose_raccomandazioni(
     if not lines:
         return "Nessuna raccomandazione specifica; follow-up secondo pratica clinica standard."
 
-    # deduplicazione preservando l'ordine (dict.fromkeys mantiene ordine in Python 3.7+)
+    # Preserva l'ordine rimuovendo duplicati
     return " ".join(dict.fromkeys(lines))
 
 
 class ReportModel:
-    """
-    Generatore rule-based di referti neuroradiologici (RF3).
-    Non addestrato — compone template a partire dai findings del Modello I.
-    """
+    """Modello II: composizione automatica del referto strutturato."""
 
     def __init__(self):
         self.model = "rule_based_v3_with_optional_llm_refinement"
 
     def load(self):
         status = "attiva" if (ENABLE_LLM_REFINEMENT and llm_refiner.ANTHROPIC_API_KEY) else "disattiva"
-        logger.info(
-            "Modello II v3: generatore rule-based, rifinitura LLM %s", status
-        )
+        logger.info("Modello II v3: generatore rule-based pronto, rifinitura LLM %s", status)
 
     def generate_from_findings(
         self,
@@ -376,24 +309,7 @@ class ReportModel:
         n_slices: int = 8,
         seed: Optional[int] = None,
     ) -> str:
-        """
-        Genera il referto dai findings del Modello I.
-
-        findings:   lista di dict {label, probability, threshold, positive}
-        no_finding: True se nessuna classe ha superato la soglia
-        n_slices:   numero di slice nell'esame (va nella sezione TECNICA)
-        seed:       se passato, l'output è riproducibile — utile per i test
-                    e per la sezione di valutazione della tesi. Se None (default)
-                    ogni chiamata produce una formulazione diversa.
-
-        Se ENABLE_LLM_REFINEMENT è attivo e ANTHROPIC_API_KEY è configurata,
-        lo scheletro rule-based viene rifinito linguisticamente da un LLM
-        (vedi llm_refiner.py). La rifinitura viene scartata — e si ricade
-        silenziosamente sullo scheletro — se: l'API non è raggiungibile,
-        la chiamata fallisce per qualsiasi motivo, oppure il testo rifinito
-        non supera la validazione di sicurezza (un finding positivo non
-        deve mai sparire durante la riformulazione).
-        """
+        """Costruisce lo scheletro e applica l'eventuale rifinitura linguistica LLM."""
         rng = random.Random(seed)
 
         tecnica = rng.choice(TECNICA_TEMPLATES).format(n_slices=n_slices)
@@ -417,21 +333,13 @@ class ReportModel:
 
         refined = llm_refiner.refine_report(skeleton)
         if refined is None:
-            # API non configurata, non raggiungibile, o risposta vuota:
-            # già loggato dentro refine_report(). Fallback silenzioso.
             return skeleton
 
         if not llm_refiner.validate_refinement(refined, findings):
-            # La riformulazione ha perso un finding positivo: non fidarsi
-            # del testo rifinito, restare sullo scheletro verificato.
-            logger.warning(
-                "Testo rifinito dall'LLM scartato per fallimento della validazione "
-                "di coerenza clinica: uso lo scheletro rule-based"
-            )
+            logger.warning("Rifinitura LLM rifiutata per incongruenze cliniche. Uso referto standard.")
             return skeleton
 
         return refined
 
 
-# Singleton importato da main.py
 report_model = ReportModel()

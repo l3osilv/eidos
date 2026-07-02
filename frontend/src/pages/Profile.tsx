@@ -1,6 +1,6 @@
 import React, { useState, useRef, ChangeEvent } from 'react';
 import { ArrowLeft, Upload, Trash2, Check, User as UserIcon, Shield } from 'lucide-react';
-import { User, Role, Gender } from '../types';
+import { User, Gender } from '../types';
 import { apiUpdateProfile } from '../api';
 
 interface ProfileProps {
@@ -41,11 +41,11 @@ export default function Profile({
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
       if (!file.type.startsWith('image/')) {
-        setErrorMessage("Errore: Il file selezionato deve essere un'immagine (PNG, JPG, etc.).");
+        setErrorMessage("Il file deve essere un'immagine.");
         return;
       }
       if (file.size > 2 * 1024 * 1024) {
-        setErrorMessage("Errore: La dimensione massima consentita per l'avatar è di 2 MB.");
+        setErrorMessage("Dimensione massima consentita: 2 MB.");
         return;
       }
 
@@ -56,7 +56,7 @@ export default function Profile({
         }
       };
       reader.onerror = () => {
-        setErrorMessage("Impossibile caricare il file immagine selezionato.");
+        setErrorMessage("Errore di caricamento immagine.");
       };
       reader.readAsDataURL(file);
     }
@@ -74,12 +74,8 @@ export default function Profile({
     setErrorMessage(null);
     setSuccessMessage(null);
 
-    if (!nome.trim()) {
-      setErrorMessage("Il nome del medico è obbligatorio.");
-      return;
-    }
-    if (!cognome.trim()) {
-      setErrorMessage("Il cognome del medico è obbligatorio.");
+    if (!nome.trim() || !cognome.trim()) {
+      setErrorMessage("Nome e cognome sono obbligatori.");
       return;
     }
 
@@ -96,7 +92,7 @@ export default function Profile({
       };
 
       onUpdateUser(updatedUser);
-      setSuccessMessage("Profilo salvato correttamente!");
+      setSuccessMessage("Profilo aggiornato!");
       setTimeout(() => {
         onBack();
       }, 1000);
@@ -109,7 +105,6 @@ export default function Profile({
 
   return (
     <div className="max-w-2xl mx-auto" id="profile-management-screen">
-      {/* Pulsante per tornare indietro */}
       <button
         onClick={onBack}
         className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 font-semibold mb-4 transition uppercase font-mono"
@@ -119,7 +114,6 @@ export default function Profile({
         Annulla e Torna Indietro
       </button>
 
-      {/* Contenitore principale */}
       <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
         <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
           <div>
@@ -130,7 +124,7 @@ export default function Profile({
               Modifica i tuoi dati anagrafici e la foto del profilo per la firma digitale.
             </p>
           </div>
-          <div className="flex items-center gap-1 text-slate-455 text-slate-400 font-mono text-[10px] bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">
+          <div className="flex items-center gap-1 text-slate-400 font-mono text-[10px] bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">
             <Shield className="h-3 w-3 text-slate-500" />
             <span>ID: {currentUser.username}</span>
           </div>
@@ -150,7 +144,6 @@ export default function Profile({
             </div>
           )}
 
-          {/* SEZIONE 1: FOTO PROFILO */}
           <div className="flex flex-col sm:flex-row items-center gap-5 pb-6 border-b border-slate-100">
             <div className="relative group">
               <div className="w-24 h-24 rounded-full border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden shadow-inner">
@@ -179,15 +172,15 @@ export default function Profile({
                   <button
                     type="button"
                     onClick={removeAvatar}
-                    className="bg-white hover:bg-slate-50 text-red-650 hover:text-red-700 text-[11px] font-bold px-3 py-1.5 rounded flex items-center gap-1.5 transition border border-slate-205 font-mono uppercase tracking-wide cursor-pointer"
+                    className="bg-white hover:bg-slate-50 text-red-600 hover:text-red-755 text-[11px] font-bold px-3 py-1.5 rounded flex items-center gap-1.5 transition border border-slate-205 font-mono uppercase tracking-wide cursor-pointer"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                     Rimuovi
                   </button>
                 )}
               </div>
-              <p className="text-[10px] text-slate-405 text-slate-400">
-                PNG o JPG. Dimensione massima 2 MB. Verrà visualizzata nell'header e nei registri clinici.
+              <p className="text-[10px] text-slate-400">
+                PNG o JPG. Dimensione massima 2 MB.
               </p>
               <input
                 ref={fileInputRef}
@@ -199,7 +192,6 @@ export default function Profile({
             </div>
           </div>
 
-          {/* SEZIONE 2: DATI ANAGRAFICI */}
           <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -229,23 +221,21 @@ export default function Profile({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Genere */}
               <div>
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">Genere per Intestazione</label>
+                <label className="block text-[11px] font-semibold text-slate-605 mb-1">Genere</label>
                 <select
                   value={gender}
                   onChange={(e) => setGender(e.target.value as Gender)}
                   className="w-full border border-slate-205 rounded px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   id="profile-gender-input"
                 >
-                  <option value="M">Maschio (Intestazione Dr.)</option>
-                  <option value="F">Femmina (Intestazione Dr.ssa)</option>
+                  <option value="M">Maschio (Dr.)</option>
+                  <option value="F">Femmina (Dr.ssa)</option>
                 </select>
               </div>
 
-              {/* Ruolo (Sola Lettura per Sicurezza) */}
               <div>
-                <label className="block text-[11px] font-semibold text-slate-400 mb-1">Ruolo Sanitario (Non Modificabile)</label>
+                <label className="block text-[11px] font-semibold text-slate-400 mb-1">Ruolo Sanitario (Sola Lettura)</label>
                 <input
                   type="text"
                   disabled
@@ -255,19 +245,17 @@ export default function Profile({
               </div>
             </div>
 
-            {/* Firma Visualizzata */}
             <div className="bg-slate-50 border border-slate-200 p-3 rounded">
-              <span className="block text-[10px] font-semibold text-slate-500 font-mono uppercase">Firma Clinica Formattata</span>
+              <span className="block text-[10px] font-semibold text-slate-500 font-mono uppercase">Firma Clinica</span>
               <p className="text-sm font-bold text-blue-900 mt-1 font-mono">
                 {gender === 'M' ? 'Dr.' : 'Dr.ssa'} {cognome || 'Cognome'}
               </p>
               <p className="text-[10px] text-slate-400 mt-0.5">
-                Questa dicitura verrà apposta automaticamente come firma per i referti e le convalide.
+                Questa dicitura verrà usata per convalidare i referti.
               </p>
             </div>
           </div>
 
-          {/* PULSANTI DI AZIONE */}
           <div className="border-t border-slate-100 pt-5 flex items-center justify-between">
             <button
               type="button"
@@ -292,7 +280,7 @@ export default function Profile({
               ) : (
                 <>
                   <Check className="h-4 w-4" />
-                  SALVA LE MODIFICHE
+                  SALVA MODIFICHE
                 </>
               )}
             </button>

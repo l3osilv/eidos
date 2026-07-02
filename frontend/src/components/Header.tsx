@@ -1,4 +1,3 @@
-
 import { Activity, LogOut, User as UserIcon } from 'lucide-react';
 import { User } from '../types';
 
@@ -13,12 +12,10 @@ export default function Header({
   onLogout,
   onProfileClick,
 }: ClinicalHeaderProps) {
-
-
   return (
     <header className="bg-white text-slate-800 border-b border-slate-200 sticky top-0 z-50 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between" id="clinical-header-container">
-        {/* Nome del software e logo */}
+        {/* Titolo applicazione */}
         <div className="flex items-center gap-3">
           <div className="bg-blue-900 w-8 h-8 rounded-md flex items-center justify-center text-white shadow-sm shrink-0">
             <Activity className="h-4.5 w-4.5" />
@@ -31,7 +28,7 @@ export default function Header({
           </div>
         </div>
 
-        {/* Dettagli dell'utente loggato */}
+        {/* Area utente autenticato */}
         <div className="flex items-center gap-4">
           {currentUser && (
             <div className="flex items-center gap-3 pl-3 border-l border-slate-200" id="user-info-section">
@@ -67,7 +64,6 @@ export default function Header({
                 </div>
               </button>
 
-              {/* Logout */}
               <button
                 onClick={onLogout}
                 className="p-1.5 hover:bg-red-50 hover:text-red-650 rounded text-slate-400 transition cursor-pointer"

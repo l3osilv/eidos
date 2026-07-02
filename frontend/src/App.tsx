@@ -20,19 +20,15 @@ export default function App() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const currentPath = useLocation();
 
-  // Leggo l'ID del paziente direttamente dall'URL tramite una regex. 
-  // Così evito di gestire uno stato globale aggiuntivo, uso l'URL come fonte di verità.
   const match = currentPath.match(/^\/patients\/([^/]+)$/);
   const selectedPatientId = match ? match[1] : null;
 
-  // Flag per gestire caricamenti ed errori nella dashboard principale
   const [isLoadingPatients, setIsLoadingPatients] = useState<boolean>(false);
   const [listError, setListError] = useState<string | null>(null);
   const [isFormSubmitting, setIsFormSubmitting] = useState<boolean>(false);
 
   const apiBaseUrl = 'http://localhost:8000';
 
-  // Ricarico la lista dei pazienti ogni volta che loggo un utente o se cambia il baseUrl
   useEffect(() => {
     setApiConfig(apiBaseUrl);
     if (currentUser) {
@@ -40,8 +36,7 @@ export default function App() {
     }
   }, [apiBaseUrl, currentUser?.username]);
 
-  // Auth guard di base: se non trovo il currentUser reindirizzo su /login,
-  // se invece è loggato evito che torni su /login o /register
+  // Auth guard
   useEffect(() => {
     if (!currentUser) {
       if (currentPath !== '/login' && currentPath !== '/register') {
@@ -82,7 +77,7 @@ export default function App() {
 
   const handleBackToDashboard = () => {
     navigate('/dashboard');
-    loadPatientsRegistry(); // ricarichiamo per aggiornare i badge di stato
+    loadPatientsRegistry();
   };
 
   const handleCreateNewPatient = async (formData: FormData) => {
@@ -90,14 +85,11 @@ export default function App() {
     setListError(null);
     try {
       const created = await apiCreatePatient(formData);
-
-      // Inserisco il nuovo paziente in cima all'array locale per evitare una nuova GET al backend
       setPatients((prev) => [created, ...prev]);
-
       navigate('/dashboard');
       return created;
     } catch (err: any) {
-      throw new Error(err.message || 'Errore di sincronizzazione db durante la creazione del paziente.');
+      throw new Error(err.message || 'Errore durante la creazione del paziente.');
     } finally {
       setIsFormSubmitting(false);
     }
@@ -118,19 +110,16 @@ export default function App() {
     navigate('/profile');
   };
 
-  // Recupero l'oggetto del paziente correntemente selezionato
   const activeSelectedPatient = patients.find((p) => p.patient_id === selectedPatientId);
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col text-slate-800 antialiased font-sans">
-      {/* Header clinico (sempre visibile) */}
       <Header
         currentUser={currentUser}
         onLogout={handleLogout}
         onProfileClick={handleProfileClick}
       />
 
-      {/* Area principale di lavoro */}
       <main className="flex-1 w-full max-w-7xl mx-auto px-4 py-8">
         {currentUser === null ? (
           currentPath === '/register' ? (
@@ -146,7 +135,6 @@ export default function App() {
           <LoadingNotice message="Sincronizzazione registro pazienti in corso..." />
         ) : (
           <div className="space-y-6 border-0">
-            {/* Gestione delle viste tramite Router */}
             <div id="clinical-workspace-stage">
               {currentPath === '/dashboard' && (
                 <div className="space-y-4">
@@ -211,7 +199,7 @@ export default function App() {
                 return (
                   <div className="bg-red-50 border border-red-200 text-red-700 p-8 rounded text-center font-mono text-xs">
                     <ShieldAlert className="h-8 w-8 text-red-500 mx-auto mb-2" />
-                    <span>ERRORE CONTESTO CLINICO: Selezionato referto inesistente o caricamento in corso...</span>
+                    <span>ERRORE CONTESTO CLINICO: Paziente non trovato o caricamento in corso...</span>
                     <button
                       onClick={handleBackToDashboard}
                       className="block mt-3 underline mx-auto text-slate-600 hover:text-slate-900 font-semibold uppercase"
@@ -226,7 +214,6 @@ export default function App() {
         )}
       </main>
 
-      {/* Footer della web app */}
       <footer className="bg-slate-900 border-t border-slate-800 py-4 text-center text-[10px] font-mono text-slate-500">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <span>© 2026 Leonardo Silvestri - Progetto di Tesi Triennale Università di Trento</span>

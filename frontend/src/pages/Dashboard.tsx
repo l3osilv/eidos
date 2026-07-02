@@ -20,8 +20,6 @@ export default function Dashboard({
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<FilterStatus>('ALL');
 
-  // Calcolo uno "status" unico dai tre flag del database.
-  // Seguo un ordine di precedenza: prima se è validato, poi refertato, ecc.
   const getPatientStatus = (p: Patient): 'TO_CLASSIFY' | 'CLASSIFIED' | 'REPORT_GENERATED' | 'VALIDATED' => {
     if (p.validated) return 'VALIDATED';
     if (p.has_report) return 'REPORT_GENERATED';
@@ -64,7 +62,6 @@ export default function Dashboard({
     }
   };
 
-  // Filtro la lista dei pazienti combinando la ricerca testuale e lo stato selezionato
   const filteredPatients = patients.filter(p => {
     const query = searchQuery.toLowerCase().trim();
     const matchesSearch =
@@ -96,9 +93,7 @@ export default function Dashboard({
 
   return (
     <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden" id="patient-dashboard-list">
-      {/* Intestazione della tabella con titolo e azioni */}
       <div className="p-4 border-b border-slate-150 bg-slate-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        {/* Titolo e descrizione sintetica */}
         <div>
           <h2 className="text-sm font-semibold text-slate-800 tracking-tight flex items-center gap-2 uppercase font-mono">
             <Database className="h-4 w-4 text-slate-500" />
@@ -109,7 +104,6 @@ export default function Dashboard({
           </p>
         </div>
 
-        {/* Bottone per aggiungere un paziente */}
         {currentUser?.role === 'medico' ? (
           <button
             onClick={onOpenNewPatientForm}
@@ -132,9 +126,7 @@ export default function Dashboard({
         )}
       </div>
 
-      {/* Pannello filtri: barra di ricerca e tab di stato */}
       <div className="p-4 border-b border-slate-100 grid grid-cols-1 md:grid-cols-3 gap-3">
-        {/* Campo di testo per la ricerca */}
         <div className="relative md:col-span-1">
           <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
             <Search className="h-4 w-4" />
@@ -144,12 +136,11 @@ export default function Dashboard({
             placeholder="Cerca per Nome, CF o ID..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 text-xs border border-slate-200 bg-white rounded text-slate-800 placeholder-slate-400 focus:outline-none focus:border-sky-500 font-sans"
+            className="w-full pl-9 pr-3 py-1.5 text-xs border border-slate-200 bg-white rounded text-slate-800 placeholder-slate-405 focus:outline-none focus:border-sky-500 font-sans"
             id="search-patient-input"
           />
         </div>
 
-        {/* Filtri rapidi per stato */}
         <div className="flex flex-wrap gap-1.5 md:col-span-2 md:justify-end" id="filter-tabs-pannel">
           {(['ALL', 'TO_CLASSIFY', 'CLASSIFIED', 'REPORT_GENERATED', 'VALIDATED'] as FilterStatus[]).map((filter) => {
             const labels: Record<FilterStatus, string> = {
@@ -166,7 +157,7 @@ export default function Dashboard({
                 onClick={() => setStatusFilter(filter)}
                 className={`px-3 py-1.5 text-xs font-semibold rounded transition ${isActive
                     ? 'bg-blue-900 text-white shadow-sm'
-                    : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                    : 'bg-slate-105 hover:bg-slate-200 text-slate-600'
                   }`}
               >
                 {labels[filter]}
@@ -176,7 +167,6 @@ export default function Dashboard({
         </div>
       </div>
 
-      {/* Tabella dei dati */}
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
@@ -203,7 +193,6 @@ export default function Dashboard({
                     onClick={() => onSelectPatient(p.patient_id)}
                     id={`patient-row-${p.patient_id}`}
                   >
-                    {/* Nome, Cognome e ID del paziente */}
                     <td className="py-3.5 px-4">
                       <div className="font-semibold text-slate-800 text-sm">
                         {p.cognome.toUpperCase()} {p.nome}
@@ -213,41 +202,36 @@ export default function Dashboard({
                       </div>
                     </td>
 
-                    {/* Codice Fiscale */}
                     <td className="py-3.5 px-4">
                       <span className="font-mono bg-slate-50 border border-slate-100 font-medium text-slate-700 px-1.5 py-0.5 rounded text-[11px]">
                         {p.codice_fiscale}
                       </span>
                     </td>
 
-                    {/* Data di inserimento */}
                     <td className="py-3.5 px-4 text-slate-600 font-medium">
                       {formatDate(p.created_at)}
                     </td>
 
-                    {/* Conteggio slice */}
                     <td className="py-3.5 px-4 text-slate-500 font-mono">
                       {p.num_slices} / 8 png
                     </td>
 
-                    {/* Badge dello stato */}
                     <td className="py-3.5 px-4">
                       <div className="flex flex-col gap-1 items-start">
                         {getStatusBadge(p)}
                         {p.validated && p.validated_by && (
-                          <div className="text-[10px] italic text-slate-400 mt-0.5">
+                          <div className="text-[10px] italic text-slate-405 mt-0.5">
                             Convalidato da: <span className="underline font-mono text-slate-500">{p.validated_by}</span>
                           </div>
                         )}
                       </div>
                     </td>
 
-                    {/* Pulsanti per l'azione clinica */}
                     <td className="py-3.5 px-4 text-right" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => onSelectPatient(p.patient_id)}
                         className={`text-xs font-bold px-3 py-1.5 rounded transition shadow-sm uppercase font-mono tracking-wide ${status === 'VALIDATED'
-                            ? 'border border-slate-200 text-slate-600 hover:bg-slate-100'
+                            ? 'border border-slate-200 text-slate-600 hover:bg-slate-105'
                             : 'bg-blue-900 hover:bg-blue-950 text-white'
                           }`}
                         id={`btn-esamina-paziente-${p.patient_id}`}

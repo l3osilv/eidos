@@ -18,10 +18,9 @@ export default function CoherenceAlert({
   coherenceIssues,
   hasMismatch,
 }: CoherenceAlertProps) {
-
   return (
     <section className="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm" id="coherence-alert-panel">
-      <div className="px-4 py-2 border-b border-background bg-slate-50/55 text-slate-550 text-[10px] font-mono font-semibold tracking-wider flex items-center justify-between">
+      <div className="px-4 py-2 border-b border-background bg-slate-50/55 text-[10px] font-mono font-semibold tracking-wider flex items-center justify-between">
         <span>VERIFICA DI COERENZA CLINICA (REPERTI VS TESTO REFERTO)</span>
         {hasMismatch ? (
           <span className="text-red-700 bg-red-100/80 px-2 py-0.5 rounded-full font-bold flex items-center gap-1 animate-pulse border border-red-200 text-[10px]" id="coherence-warning-badge">
@@ -39,7 +38,7 @@ export default function CoherenceAlert({
           <ShieldAlert className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
           <div>
             <h4 className="font-bold text-red-900 uppercase font-mono text-[11px] tracking-wider mb-1">Mancata coerenza clinica rilevata:</h4>
-            <p className="text-slate-650 text-[11px] text-slate-700 leading-normal mb-2 font-sans">
+            <p className="text-slate-700 text-[11px] leading-normal mb-2 font-sans">
               La valutazione preliminare ha evidenziato reperti patologici positivi le cui parole semantiche o esiti non risultano compiutamente menzionate o escluse nella bozza di referto attualmente salvata.
             </p>
             

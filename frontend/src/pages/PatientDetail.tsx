@@ -30,20 +30,15 @@ export default function PatientDetail({
   const [disclaimer, setDisclaimer] = useState<string>('');
   const [isLoadingDetail, setIsLoadingDetail] = useState<boolean>(false);
 
-  // Gestisco un booleano per ogni singola azione asincrona.
-  // In questo modo posso disabilitare solo il pulsante premuto senza bloccare tutto lo schermo.
   const [isClassifying, setIsClassifying] = useState<boolean>(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState<boolean>(false);
   const [isSavingReport, setIsSavingReport] = useState<boolean>(false);
   const [isValidating, setIsValidating] = useState<boolean>(false);
   const [errorText, setErrorText] = useState<string | null>(null);
 
-  // Risultati e avvisi per il controllo di coerenza tra reperti e testo
   const [coherenceIssues, setCoherenceIssues] = useState<CoherenceIssue[]>([]);
   const [hasMismatch, setHasMismatch] = useState<boolean>(false);
 
-  // Quando seleziono un paziente diverso resetto tutti gli stati,
-  // e se ha già dei risultati salvati chiedo i dati al backend.
   useEffect(() => {
     setActiveSlice(0);
     setFindings([]);
@@ -58,8 +53,7 @@ export default function PatientDetail({
     }
   }, [patient.patient_id]);
 
-  // Calcolo il controllo di coerenza localmente in tempo reale sul client
-  // per evitare continue chiamate di rete inefficienti a ogni battitura di tasto.
+  // Calcolo coerenza locale sul client
   useEffect(() => {
     if (patient.has_classification && patient.has_report && findings.length > 0 && reportText) {
       const reportLower = reportText.toLowerCase();
@@ -80,13 +74,11 @@ export default function PatientDetail({
     }
   }, [patient.has_classification, patient.has_report, findings, reportText]);
 
-  // Carico report e reperti in parallelo con un Promise.all, è molto più veloce rispetto all'esecuzione in sequenza.
   const loadClassificationResults = async () => {
     setIsLoadingDetail(true);
     setErrorText(null);
     try {
       const classifyPromise = apiClassifyPatient(patient.patient_id, false);
-      // Uso force=false così il server restituisce i dati esistenti senza ricalcolare tutto
       const reportPromise = patient.has_report 
         ? apiGenerateReport(patient.patient_id, false) 
         : Promise.resolve(null);
@@ -96,10 +88,10 @@ export default function PatientDetail({
       setFindings(classRes.findings);
       if (repRes) {
         setReportText(repRes.report_text);
-        setDisclaimer(repRes.disclaimer || 'Bozza di referto pre-compilata. Richiede revisione e firma del medico radiologo.');
+        setDisclaimer(repRes.disclaimer || 'Bozza di referto strutturata.');
       }
     } catch (err: any) {
-      setErrorText(err.message || 'Errore di sincronizzazione clinica.');
+      setErrorText(err.message || 'Errore di caricamento dei dati clinici.');
     } finally {
       setIsLoadingDetail(false);
     }
@@ -112,12 +104,10 @@ export default function PatientDetail({
       const res = await apiClassifyPatient(patient.patient_id, true);
       setFindings(res.findings);
 
-      // Aggiorno lo stato del paziente e lo passo all'App padre,
-      // così il badge nella dashboard cambia senza dover ricaricare la lista intera
       const updatedPat = { ...patient, has_classification: true };
       onUpdatePatientState(updatedPat);
     } catch (err: any) {
-      setErrorText(err.message || 'Fallimento nel caricamento della valutazione reperti.');
+      setErrorText(err.message || 'Errore durante la classificazione.');
     } finally {
       setIsClassifying(false);
     }
@@ -129,13 +119,12 @@ export default function PatientDetail({
     try {
       const res = await apiGenerateReport(patient.patient_id, true);
       setReportText(res.report_text);
-      setDisclaimer(res.disclaimer || 'Bozza di referto pre-compilata. Richiede revisione e firma del medico radiologo.');
+      setDisclaimer(res.disclaimer || 'Bozza di referto strutturata.');
 
-      // Aggiorniamo il badge nella dashboard
       const updatedPat = { ...patient, has_report: true };
       onUpdatePatientState(updatedPat);
     } catch (err: any) {
-      setErrorText(err.message || 'Fallimento nella preparazione della bozza referto.');
+      setErrorText(err.message || 'Errore di generazione del referto.');
     } finally {
       setIsGeneratingReport(false);
     }
@@ -155,7 +144,7 @@ export default function PatientDetail({
         }, 2000);
       }
     } catch (err: any) {
-      setErrorText(err.message || 'Errore durante la memorizzazione delle modifiche nel database.');
+      setErrorText(err.message || 'Errore durante il salvataggio.');
     } finally {
       setIsSavingReport(false);
     }
@@ -163,7 +152,7 @@ export default function PatientDetail({
 
   const handleValidateReport = async () => {
     if (currentUser?.role !== 'medico') {
-      setErrorText('Accesso non autorizzato (403): Solo personale medico strutturato possiede la firma digitale per validare il referto.');
+      setErrorText('Validazione riservata al personale medico strutturato.');
       return;
     }
 
@@ -183,9 +172,10 @@ export default function PatientDetail({
       setIsValidating(false);
     }
   };
+
   const handleUnvalidateReport = async () => {
     if (currentUser?.role !== 'medico') {
-      setErrorText('Accesso non autorizzato (403): Solo personale medico strutturato può riaprire un referto validato.');
+      setErrorText('Riapertura riservata al personale medico strutturato.');
       return;
     }
 
@@ -217,14 +207,14 @@ export default function PatientDetail({
       element.click();
       document.body.removeChild(element);
     } catch (err: any) {
-      setErrorText(err.message || 'Impossibile esportare il file di testo.');
+      setErrorText(err.message || 'Impossibile esportare il file.');
     }
   };
 
   if (isLoadingDetail) {
     return (
       <div className="space-y-4" id="clinical-workspace-container">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-50 border border-slate-205 p-3 rounded-lg">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-50 border border-slate-200 p-3 rounded-lg">
           <div className="flex items-center gap-3">
             <button
               onClick={onBack}
@@ -248,7 +238,6 @@ export default function PatientDetail({
 
   return (
     <div className="space-y-4" id="clinical-workspace-container">
-      {/* Intestazione della scheda con i dati del paziente */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-50 border border-slate-205 p-3 rounded-lg">
         <div className="flex items-center gap-3">
           <button
@@ -262,7 +251,7 @@ export default function PatientDetail({
 
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-sm font-semibold text-slate-800 font-mono tracking-wide uppercase">
+              <h2 className="text-sm font-semibold text-slate-805 font-mono tracking-wide uppercase">
                 Scheda Paziente: {patient.cognome.toUpperCase()} {patient.nome}
               </h2>
               {patient.validated ? (
@@ -275,7 +264,7 @@ export default function PatientDetail({
                 </span>
               )}
             </div>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-slate-505 mt-0.5">
               CF: <span className="font-mono font-medium text-slate-700">{patient.codice_fiscale}</span> • Data Nascita: <span className="font-mono text-slate-700">{patient.data_nascita}</span> • ID: <span className="font-mono text-slate-700">{patient.patient_id}</span>
             </p>
           </div>
@@ -293,12 +282,11 @@ export default function PatientDetail({
         )}
       </div>
 
-      {/* Alert di errore per operazioni cliniche fallite */}
       {errorText && (
         <div className="bg-red-50 border border-red-200 text-red-700 p-3.5 rounded text-xs flex items-start gap-2.5 animate-in fade-in" id="detail-workspace-error">
           <AlertCircle className="h-4.5 w-4.5 text-red-500 shrink-0 mt-0.5" />
           <div className="flex-1">
-            <span className="font-semibold">Errore Operativo Clinico:</span> {errorText}
+            <span className="font-semibold">Errore:</span> {errorText}
           </div>
           <button
             onClick={() => setErrorText(null)}
@@ -309,7 +297,6 @@ export default function PatientDetail({
         </div>
       )}
 
-      {/* Visualizzatore PACS a sinistra e pannelli di lavoro a destra */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5" id="clinical-panels-grid">
         <div className="lg:col-span-5 space-y-4" id="left-column-viewer">
           <PacsViewer
@@ -318,9 +305,9 @@ export default function PatientDetail({
             onSliceChange={(idx) => setActiveSlice(idx)}
           />
 
-          <div className="bg-slate-50 border border-slate-205 p-3 rounded-lg text-[11px] text-slate-500 font-sans leading-relaxed">
-            <span className="font-semibold text-slate-700 block mb-1 uppercase font-mono tracking-wider">Note di consultazione:</span>
-            Le scansioni assiali derivano dal modulo PACS certificato. L'analisi preliminare valuta l'intero blocco composto da 8 slices aggregate per identificare anomalie. L'effetto è globale sul volume esaminato.
+          <div className="bg-slate-50 border border-slate-200 p-3 rounded-lg text-[11px] text-slate-500 font-sans leading-relaxed">
+            <span className="font-semibold text-slate-705 block mb-1 uppercase font-mono tracking-wider">Note di consultazione:</span>
+            Le scansioni assiali derivano dal modulo PACS. L'analisi preliminare valuta l'intero blocco composto da 8 slices aggregate per identificare anomalie.
           </div>
         </div>
 

@@ -18,8 +18,6 @@ export default function PacsViewer({
   const [loading, setLoading] = useState(true);
   const [errorStatus, setErrorStatus] = useState<string | null>(null);
 
-  // Rifaccio la fetch quando cambia la slice o il paziente.
-  // Uso il flag 'active' per evitare aggiornamenti di stato se il componente viene smontato prima della fine.
   useEffect(() => {
     let active = true;
     let oldUrl = imageUrl;
@@ -36,7 +34,7 @@ export default function PacsViewer({
         }
       } catch (err: any) {
         if (active) {
-          setErrorStatus(err.message || 'Errore di caricamento binario PACS slice.');
+          setErrorStatus(err.message || 'Errore caricamento slice.');
           setLoading(false);
         }
       }
@@ -46,7 +44,6 @@ export default function PacsViewer({
 
     return () => {
       active = false;
-      // Rilascio il blob URL precedente per prevenire memory leak nel browser
       if (oldUrl.startsWith('blob:')) {
         URL.revokeObjectURL(oldUrl);
       }
@@ -61,8 +58,6 @@ export default function PacsViewer({
     onSliceChange((selectedIndex + 1) % 8);
   };
 
-  // Carico in parallelo tutte le miniature in basso.
-  // Aggiungo has_classification alle dipendenze così ricarico i file aggiornati se il backend calcola nuovi risultati.
   const [thumbUrls, setThumbUrls] = useState<string[]>([]);
   useEffect(() => {
     Promise.all(
@@ -74,20 +69,18 @@ export default function PacsViewer({
 
   return (
     <div className="bg-slate-950 border border-slate-800 rounded-lg overflow-hidden flex flex-col p-4 shadow-xl" id="clinical-pacs-viewer">
-      {/* Controlli dell'header del visualizzatore PACS */}
       <div className="flex items-center justify-between pb-3 border-b border-slate-800 text-slate-400 text-xs mb-3 font-mono">
         <div className="flex items-center gap-2">
           <Activity className="h-4 w-4 text-emerald-500 animate-pulse" />
-          <span className="font-semibold text-slate-200">RIS/PACS AXIAL SLICE VIEWER</span>
+          <span className="font-semibold text-slate-200">VISUALIZZATORE TC ASSIALE</span>
         </div>
       </div>
 
-      {/* Schermata principale dell'immagine */}
       <div className="relative aspect-square w-full max-w-sm mx-auto bg-slate-900 rounded-lg border border-slate-800 overflow-hidden flex items-center justify-center group" id="pacs-main-stage">
         {loading ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-950" id="pacs-skeleton-screen">
-            <RefreshCw className="h-8 w-8 text-sky-550 animate-spin text-sky-400" />
-            <span className="text-xs font-mono text-slate-400 tracking-wider">CARICAMENTO SLICE TC DA ARCHIVIO...</span>
+            <RefreshCw className="h-8 w-8 text-sky-400 animate-spin" />
+            <span className="text-xs font-mono text-slate-400 tracking-wider">CARICAMENTO SLICE TC...</span>
           </div>
         ) : errorStatus ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center gap-2 bg-slate-950" id="pacs-error-screen">
@@ -105,28 +98,24 @@ export default function PacsViewer({
           />
         )}
 
-        {/* Indicatori grafici in sovrimpressione */}
         {!loading && !errorStatus && (
           <>
-            {/* Pulsante per andare indietro di una slice */}
             <button
               onClick={handlePrev}
               className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-slate-900/60 hover:bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800 opacity-0 group-hover:opacity-100 transition duration-150"
-              title="Slice Precedente (Assiale)"
+              title="Slice Precedente"
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
 
-            {/* Pulsante per andare avanti di una slice */}
             <button
               onClick={handleNext}
               className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-slate-900/60 hover:bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800 opacity-0 group-hover:opacity-100 transition duration-150"
-              title="Slice Successiva (Assiale)"
+              title="Slice Successiva"
             >
               <ChevronRight className="h-5 w-5" />
             </button>
 
-            {/* Badge centrale con l'indice della slice */}
             <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-slate-950/80 border border-slate-800 px-2.5 py-1 rounded text-[10px] font-mono text-slate-300 flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
               <span>SLICE {selectedIndex + 1} / 8</span>
@@ -135,10 +124,9 @@ export default function PacsViewer({
         )}
       </div>
 
-      {/* Barra delle miniature in basso */}
       <div className="mt-4" id="pacs-thumbnails-strip">
         <label className="block text-[10px] font-semibold font-mono text-slate-500 uppercase tracking-wider mb-2">
-          FILMSTRIP DI NAVIGAZIONE ASSIALE (CORRIERI TC):
+          Miniature di Navigazione
         </label>
 
         <div className="grid grid-cols-8 gap-1.5">

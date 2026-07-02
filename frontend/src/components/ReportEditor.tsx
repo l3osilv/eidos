@@ -34,7 +34,6 @@ export default function ReportEditor({
 }: ReportEditorProps) {
   return (
     <div className="space-y-4">
-      {/* Sezione C: compilazione referto testuale */}
       <section className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm space-y-3.5" id="clinical-reporting-editor">
         <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
           <h3 className="text-xs font-bold text-slate-400 font-mono uppercase tracking-wider flex items-center gap-1.5">
@@ -47,7 +46,6 @@ export default function ReportEditor({
           </span>
         </div>
 
-        {/* Area di compilazione del referto */}
         {!patient.has_report && !reportText ? (
           <div className="bg-slate-50 border border-slate-100 rounded-lg p-8 text-center flex flex-col items-center justify-center gap-3">
             <FileSpreadsheet className="h-10 w-10 text-slate-350" />
@@ -96,21 +94,18 @@ export default function ReportEditor({
               </label>
 
               <div className="bg-[#fdfcfb] border border-slate-200 shadow-inner rounded p-8 md:p-12 max-w-3xl mx-auto my-2 relative overflow-hidden select-text border-t-4 border-t-slate-400">
-                {/* LaTeX Header Block */}
-                <div className="border-b border-slate-200 pb-3 mb-6 text-slate-455 text-slate-400 text-[10px] font-mono flex justify-between uppercase tracking-wider">
+                <div className="border-b border-slate-200 pb-3 mb-6 text-slate-400 text-[10px] font-mono flex justify-between uppercase tracking-wider">
                   <span>MEDICINAI REPORTING SYSTEM</span>
                   <span>ID PAZIENTE: {patient.patient_id.substring(0, 8)}...</span>
                 </div>
                 
-                {/* Document Title */}
                 <div className="text-center mb-8 font-serif">
                   <h1 className="text-base md:text-lg font-bold text-slate-900 tracking-wide uppercase">
                     REFERTO DI ESAME TC ENCEFALO
                   </h1>
-                  <div className="w-16 h-[1px] bg-slate-355 bg-slate-300 mx-auto mt-2"></div>
+                  <div className="w-16 h-[1px] bg-slate-300 mx-auto mt-2"></div>
                 </div>
 
-                {/* Textarea mimicking the document page */}
                 <textarea
                   value={reportText}
                   onChange={(e) => setReportText(e.target.value)}
@@ -122,8 +117,7 @@ export default function ReportEditor({
                   id="editorial-clinical-textarea"
                 />
 
-                {/* Page Footer Mock */}
-                <div className="border-t border-slate-200 pt-3 mt-6 text-slate-455 text-slate-400 text-[9px] font-mono flex justify-between uppercase tracking-wider">
+                <div className="border-t border-slate-200 pt-3 mt-6 text-slate-400 text-[9px] font-mono flex justify-between uppercase tracking-wider">
                   <span>DATA CARICAMENTO: {new Date(patient.created_at).toLocaleDateString('it-IT')}</span>
                   <span>PAGINA 1 DI 1</span>
                 </div>
@@ -184,7 +178,6 @@ export default function ReportEditor({
         )}
       </section>
 
-      {/* Sezione D: validazione clinica finale e firma digitale */}
       <section className="bg-white border border-slate-200 text-slate-800 rounded-lg p-4 shadow-sm overflow-hidden relative" id="final-medico-validation-panel">
         {patient.validated ? (
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -194,7 +187,7 @@ export default function ReportEditor({
                 <h4 className="font-bold text-emerald-900 font-mono text-[11px] tracking-wider uppercase mb-0.5">
                   REFERTO VALIDATO CLINICAMENTE E FIRMATO
                 </h4>
-                <p className="text-slate-655 text-[11px] text-slate-650 leading-relaxed">
+                <p className="text-slate-650 text-[11px] leading-relaxed">
                   Questo referto è stato firmato digitalmente, archiviato nel sistema RIS/PACS ospedaliero ed è idoneo all'uso clinico definitivo.
                 </p>
                 <p className="text-[10px] font-mono text-emerald-700 mt-1.5 uppercase font-bold">

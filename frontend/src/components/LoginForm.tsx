@@ -43,14 +43,12 @@ export default function LoginForm({
     setLoading(true);
 
     try {
-      // Uso URLSearchParams per inviare i dati in formato urlencoded, richiesto da FastAPI OAuth2
       const params = new URLSearchParams();
       params.append('username', username.trim());
       params.append('password', password);
 
       const res = await apiLogin(params);
 
-      // Salvo il token per le chiamate API successive
       setTokenMemory(res.access_token);
 
       const loggedUser: User = {
@@ -89,21 +87,16 @@ export default function LoginForm({
 
       await apiRegister(payload);
       navigate('/login?registered=true');
-
-      // Svuoto la password ma mantengo l'username così l'utente non deve reinserirlo
       setPassword('');
     } catch (err: any) {
-      setErrorMessage(err.message || "Impossibile registrare l'account sanitario inserito.");
+      setErrorMessage(err.message || "Impossibile registrare l'account.");
     } finally {
       setLoading(false);
     }
   };
 
-
-
   return (
     <div className="max-w-md mx-auto my-12" id="clinical-login-screen">
-      {/* Logo del portale */}
       <div className="text-center mb-6">
         <div className="bg-blue-900 border border-blue-800 p-3 rounded-lg inline-flex items-center justify-center text-white mb-3 shadow-md">
           <Activity className="h-8 w-8 animate-pulse" />
@@ -117,7 +110,6 @@ export default function LoginForm({
       </div>
 
       <div className="bg-white border border-slate-205 rounded-lg shadow-sm overflow-hidden">
-        {/* Pulsanti per alternare Accedi e Registrati */}
         <div className="flex border-b border-slate-150 bg-slate-50">
           <button
             onClick={() => {
@@ -148,7 +140,6 @@ export default function LoginForm({
         </div>
 
         <div className="p-6 space-y-4">
-          {/* Avvisi e messaggi per l'utente */}
           {errorMessage && (
             <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded text-xs flex gap-2 items-start" id="login-error-alert">
               <ShieldAlert className="h-4.5 w-4.5 text-red-500 shrink-0 mt-0.5" />
@@ -166,7 +157,6 @@ export default function LoginForm({
           )}
 
           <form onSubmit={isRegister ? handleRegisterSubmit : handleLoginSubmit} className="space-y-4 outline-none">
-            {/* Nome e Cognome (solo in fase di registrazione) */}
             {isRegister && (
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -206,10 +196,9 @@ export default function LoginForm({
               </div>
             )}
 
-            {/* Nome utente */}
             <div>
               <label className="block text-[11px] font-semibold text-slate-600 mb-1 font-mono uppercase tracking-wide">
-                {isRegister ? 'ID Credenziali (Username Auto-Generato)' : 'ID Credenziali (Username)'}
+                {isRegister ? 'Username (Generato Automaticamente)' : 'Username'}
               </label>
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 font-mono">
@@ -230,14 +219,13 @@ export default function LoginForm({
               </div>
               {isRegister && (
                 <p className="text-[10px] text-slate-400 mt-1 font-mono">
-                  L'ID credenziali per il login viene generato concatenando Nome e Cognome in minuscolo.
+                  L'username viene generato concatenando Nome e Cognome in minuscolo.
                 </p>
               )}
             </div>
 
-            {/* Password di sicurezza */}
             <div>
-              <label className="block text-[11px] font-semibold text-slate-600 mb-1 font-mono uppercase tracking-wide">Codice Segreto di Sicurezza {`(`}Password{`)`}</label>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1 font-mono uppercase tracking-wide">Password</label>
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
                   <Lock className="h-4 w-4" />
@@ -254,13 +242,12 @@ export default function LoginForm({
               </div>
             </div>
 
-            {/* Selezione del ruolo (solo in fase di registrazione) */}
             {isRegister && (
               <>
                 <div className="bg-slate-50 p-2.5 rounded border border-slate-200">
-                  <label className="block text-[10px] font-semibold text-slate-500 mb-1.5 font-mono">RUOLO SANITARIO DEL NUOVO ACCOUNT</label>
+                  <label className="block text-[10px] font-semibold text-slate-500 mb-1.5 font-mono">RUOLO SANITARIO</label>
                   <div className="flex gap-2.5">
-                    <label className="flex items-center gap-1.5 text-xs text-slate-705 cursor-pointer">
+                    <label className="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer">
                       <input
                         type="radio"
                         name="role-radio"
@@ -268,9 +255,9 @@ export default function LoginForm({
                         onChange={() => setRole('medico')}
                         className="text-blue-900 focus:ring-blue-800"
                       />
-                      <span className="font-medium text-slate-705">Medico Strutturato</span>
+                      <span className="font-medium">Medico Strutturato</span>
                     </label>
-                    <label className="flex items-center gap-1.5 text-xs text-slate-705 cursor-pointer">
+                    <label className="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer">
                       <input
                         type="radio"
                         name="role-radio"
@@ -278,16 +265,15 @@ export default function LoginForm({
                         onChange={() => setRole('specializzando')}
                         className="text-blue-900 focus:ring-blue-800"
                       />
-                      <span className="font-medium text-slate-705">Specializzando</span>
+                      <span className="font-medium">Specializzando</span>
                     </label>
                   </div>
                 </div>
 
-                {/* Selezione del sesso (solo in fase di registrazione) */}
                 <div className="bg-slate-50 p-2.5 rounded border border-slate-200">
                   <label className="block text-[10px] font-semibold text-slate-500 mb-1.5 font-mono">SESSO</label>
                   <div className="flex gap-2.5">
-                    <label className="flex items-center gap-1.5 text-xs text-slate-705 cursor-pointer">
+                    <label className="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer">
                       <input
                         type="radio"
                         name="gender-radio"
@@ -295,9 +281,9 @@ export default function LoginForm({
                         onChange={() => setGender('M')}
                         className="text-blue-900 focus:ring-blue-800"
                       />
-                      <span className="font-medium text-slate-705">Maschio</span>
+                      <span className="font-medium">Maschio</span>
                     </label>
-                    <label className="flex items-center gap-1.5 text-xs text-slate-705 cursor-pointer">
+                    <label className="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer">
                       <input
                         type="radio"
                         name="gender-radio"
@@ -305,14 +291,13 @@ export default function LoginForm({
                         onChange={() => setGender('F')}
                         className="text-blue-900 focus:ring-blue-800"
                       />
-                      <span className="font-medium text-slate-705">Femmina</span>
+                      <span className="font-medium">Femmina</span>
                     </label>
                   </div>
                 </div>
               </>
             )}
 
-            {/* Pulsante di invio della form */}
             <button
               type="submit"
               disabled={loading}
@@ -325,12 +310,10 @@ export default function LoginForm({
                   AUTENTICAZIONE IN CORSO...
                 </>
               ) : (
-                isRegister ? 'Registra account e crea credenziali' : 'Accedi ed apri RIS/PACS'
+                isRegister ? 'Registra Account' : 'Accedi'
               )}
             </button>
           </form>
-
-
         </div>
       </div>
     </div>

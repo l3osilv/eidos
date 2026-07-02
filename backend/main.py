@@ -33,7 +33,7 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 import io
 import logging
 from contextlib import asynccontextmanager
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import List
 
 import torch
@@ -229,7 +229,7 @@ async def create_patient(
     cognome: str = Form(...),
     codice_fiscale: str = Form(...),
     data_nascita: date = Form(...),
-    sesso: str = Form(...),
+    gender: str = Form(...),
     files: List[UploadFile] = File(...),
     current_user: dict = Depends(get_current_user),
 ):
@@ -259,8 +259,8 @@ async def create_patient(
         "cognome": cognome,
         "codice_fiscale": codice_fiscale,
         "data_nascita": data_nascita.isoformat(),
-        "gender": sesso,
-        "created_at": datetime.utcnow(),
+        "gender": gender,
+        "created_at": datetime.now(timezone.utc),
         "created_by": current_user["username"],
         "image_paths": [],
         "findings": None,

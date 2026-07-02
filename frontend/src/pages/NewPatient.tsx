@@ -54,15 +54,12 @@ export default function NewPatient({
   };
 
   const addFiles = (files: File[]) => {
-    // Verifico che i file selezionati siano effettivamente immagini, altrimenti mostro un errore
     const imageFiles = files.filter(f => f.type.startsWith('image/'));
 
     if (imageFiles.length !== files.length) {
       setErrorMessage("Attenzione: Vengono accettati esclusivamente file immagine (es. PNG, JPG).");
     }
 
-    // Unisco i nuovi file a quelli precedenti e rimuovo eventuali duplicati 
-    // (considero identici i file con stesso nome e stessa dimensione)
     setSelectedFiles((prev) => {
       const combined = [...prev, ...imageFiles];
       const unique = combined.filter((v, i, a) => a.findIndex(t => t.name === v.name && t.size === v.size) === i);
@@ -82,7 +79,6 @@ export default function NewPatient({
     e.preventDefault();
     setErrorMessage(null);
 
-    // Controllo che tutti i campi obbligatori siano stati compilati
     if (!nome.trim() || !cognome.trim() || !cf.trim() || !dataNascita) {
       setErrorMessage("Tutti i dati anagrafici del paziente sono obbligatori.");
       return;
@@ -93,24 +89,19 @@ export default function NewPatient({
       return;
     }
 
-    // Devono essere esattamente 8 immagini per soddisfare i requisiti del backend.
-    // Eseguo il controllo lato frontend per evitare una richiesta API inutile.
     if (selectedFiles.length !== 8) {
-      setErrorMessage(`Requisito Neuroradiologico Mancante: Il sistema richiede il caricamento di esattamente 8 slice assiali consecutive in formato immagine per procedere. Al momento hai selezionato ${selectedFiles.length} file.`);
+      setErrorMessage(`Il sistema richiede il caricamento di esattamente 8 slice assiali in formato immagine per procedere. Al momento hai selezionato ${selectedFiles.length} file.`);
       return;
     }
 
     try {
-      // Costruisco manualmente il FormData: 
-      // appendo ogni singolo file sotto la stessa chiave 'files' come richiesto dal backend
       const formData = new FormData();
       formData.append('nome', nome.trim());
       formData.append('cognome', cognome.trim());
       formData.append('codice_fiscale', cf.toUpperCase().trim());
       formData.append('data_nascita', dataNascita);
-      formData.append('sesso', sesso);
-      // Ordino le slice in base al nome del file (ordinamento naturale/numerico) per garantire che
-      // arrivino al backend nell'ordine corretto (slice_0, slice_1, ..., slice_7)
+      formData.append('gender', sesso);
+
       const sortedFiles = [...selectedFiles].sort((a, b) =>
         a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
       );
@@ -120,13 +111,12 @@ export default function NewPatient({
 
       await onSubmit(formData);
     } catch (err: any) {
-      setErrorMessage(err.message || 'Errore inconsueto durante la registrazione del paziente sul database.');
+      setErrorMessage(err.message || 'Errore durante la registrazione del paziente.');
     }
   };
 
   return (
     <div className="max-w-3xl mx-auto" id="new-patient-registry-form">
-      {/* Pulsante per tornare al registro */}
       <button
         onClick={onBack}
         className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 font-semibold mb-4 transition uppercase font-mono"
@@ -136,7 +126,6 @@ export default function NewPatient({
         Torna al Registro
       </button>
 
-      {/* Contenitore principale del form */}
       <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
         <div className="p-4 border-b border-slate-100 bg-slate-50/50">
           <h2 className="text-sm font-semibold text-slate-800 tracking-tight font-mono uppercase">
@@ -149,7 +138,7 @@ export default function NewPatient({
 
         <form onSubmit={handleSubmitForm} className="p-6 space-y-6">
           {errorMessage && (
-            <div className="bg-red-50 border border-red-200 text-red-700 p-3.5 rounded text-xs flex items-start gap-2.5 animate-in fade-in duration-205" id="form-error-alert">
+            <div className="bg-red-50 border border-red-200 text-red-700 p-3.5 rounded text-xs flex items-start gap-2.5 animate-in fade-in duration-200" id="form-error-alert">
               <AlertCircle className="h-4.5 w-4.5 text-red-500 shrink-0 mt-0.5" />
               <div>
                 <span className="font-semibold">Errore di Registrazione:</span> {errorMessage}
@@ -157,16 +146,14 @@ export default function NewPatient({
             </div>
           )}
 
-          {/* SEZIONE 1: ANAGRAFICA */}
           <div>
             <h3 className="text-xs font-semibold text-slate-400 font-mono uppercase tracking-wider mb-3">
-              1. Informazioni Anagrafiche (Codice Paziente)
+              1. Informazioni Anagrafiche
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Nome */}
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Nome</label>
+                <label className="block text-xs font-medium text-slate-605 mb-1">Nome</label>
                 <input
                   type="text"
                   required
@@ -178,7 +165,6 @@ export default function NewPatient({
                 />
               </div>
 
-              {/* Cognome */}
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Cognome</label>
                 <input
@@ -187,12 +173,11 @@ export default function NewPatient({
                   value={cognome}
                   onChange={(e) => setCognome(e.target.value)}
                   placeholder="E.g. Martini"
-                  className="w-full border border-slate-200 rounded px-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full border border-slate-200 rounded px-3 py-1.5 text-xs text-slate-805 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   id="patient-surname-input"
                 />
               </div>
 
-              {/* Codice Fiscale */}
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1 flex items-center justify-between">
                   <span>Codice Fiscale</span>
@@ -205,12 +190,11 @@ export default function NewPatient({
                   value={cf}
                   onChange={(e) => setCf(e.target.value)}
                   placeholder="MRTLNZ55M12L219H"
-                  className="w-full border border-slate-200 rounded px-3 py-1.5 text-xs font-mono tracking-wider text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 uppercase"
+                  className="w-full border border-slate-200 rounded px-3 py-1.5 text-xs font-mono tracking-wider text-slate-800 placeholder-slate-404 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 uppercase"
                   id="patient-cf-input"
                 />
               </div>
 
-              {/* Data di Nascita */}
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Data di Nascita</label>
                 <input
@@ -223,7 +207,6 @@ export default function NewPatient({
                 />
               </div>
 
-              {/* Sesso */}
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Sesso</label>
                 <select
@@ -241,16 +224,14 @@ export default function NewPatient({
             </div>
           </div>
 
-          {/* SEZIONE 2: ALLEGATI (SLICE TC) */}
           <div className="border-t border-slate-100 pt-6">
             <h3 className="text-xs font-semibold text-slate-400 font-mono uppercase tracking-wider mb-3 flex items-center justify-between">
               <span>2. Caricamento Serie Immagini (Pacchetto Esame)</span>
             </h3>
 
-            {/* Contatore dei file inseriti */}
             <div className={`mb-4 p-2.5 rounded text-xs flex items-center justify-between font-mono ${selectedFiles.length === 8
                 ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                : 'bg-slate-50 text-slate-500 border border-slate-250'
+                : 'bg-slate-50 text-slate-505 border border-slate-200'
               }`} id="slice-counter-gauge font-mono">
               <div className="flex items-center gap-2">
                 {selectedFiles.length === 8 ? (
@@ -258,14 +239,13 @@ export default function NewPatient({
                 ) : (
                   <AlertCircle className="h-4.5 w-4.5 text-slate-400" />
                 )}
-                <span>STATO CARICAMENTO SLICES DI DIAGNOSI:</span>
+                <span>STATO CARICAMENTO SLICES:</span>
               </div>
               <div className="font-semibold">
-                {selectedFiles.length} / 8 FILE IMMAGINE CHE COMPONGONO IL VOLUME
+                {selectedFiles.length} / 8 IMMAGINI TC
               </div>
             </div>
 
-            {/* Area drag and drop per il caricamento */}
             <div
               onDragEnter={handleDrag}
               onDragOver={handleDrag}
@@ -274,7 +254,7 @@ export default function NewPatient({
               onClick={() => fileInputRef.current?.click()}
               className={`border-2 border-dashed rounded-lg p-7 text-center cursor-pointer transition flex flex-col items-center justify-center gap-2 ${dragActive
                   ? 'border-blue-900 bg-blue-50/15'
-                  : 'border-slate-250 bg-slate-50/50 hover:bg-slate-50 hover:border-slate-400'
+                  : 'border-slate-200 bg-slate-50/50 hover:bg-slate-50 hover:border-slate-400'
                 }`}
               id="file-drop-zone"
             >
@@ -289,20 +269,19 @@ export default function NewPatient({
               />
               <Upload className="h-7 w-7 text-slate-400" />
               <div>
-                <p className="text-xs font-semibold text-slate-700">Trascina qui le 8 immagini della TC, oppure clicca per sfogliare</p>
-                <p className="text-[10px] text-slate-400 mt-1">PNG o JPG • Esattamente 8 immagini per paziente rappresentative del volume encefalico</p>
+                <p className="text-xs font-semibold text-slate-707">Trascina qui le 8 immagini della TC, oppure clicca per selezionarle</p>
+                <p className="text-[10px] text-slate-400 mt-1">PNG o JPG • Esattamente 8 immagini per paziente</p>
               </div>
             </div>
 
-            {/* Elenco dei file pronti per l'invio */}
             {selectedFiles.length > 0 && (
               <div className="mt-4 bg-slate-50 border border-slate-150 rounded" id="uploaded-files-list-panel">
-                <div className="p-2 border-b border-slate-150 text-[10px] font-mono text-slate-500 flex justify-between items-center bg-slate-100">
-                  <span>FILE SELEZIONATI PER COMPILARE L'ENTRY:</span>
+                <div className="p-2 border-b border-slate-150 text-[10px] font-mono text-slate-550 flex justify-between items-center bg-slate-100">
+                  <span>FILE SELEZIONATI:</span>
                   <button
                     type="button"
                     onClick={clearAllFiles}
-                    className="text-red-650 hover:text-red-700 hover:underline flex items-center gap-1 font-semibold"
+                    className="text-red-600 hover:text-red-700 hover:underline flex items-center gap-1 font-semibold"
                   >
                     <Trash2 className="h-3 w-3" /> Svuota lista
                   </button>
@@ -319,7 +298,7 @@ export default function NewPatient({
                       <button
                         type="button"
                         onClick={() => removeFile(idx)}
-                        className="p-1 hover:bg-red-55 text-red-500 rounded transition"
+                        className="p-1 hover:bg-red-50 text-red-500 rounded transition"
                         title="Rimuovi questo file"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -331,7 +310,6 @@ export default function NewPatient({
             )}
           </div>
 
-          {/* Pulsanti di azione a fondo pagina */}
           <div className="border-t border-slate-100 pt-5 flex items-center justify-between" id="form-action-footer">
             <button
               type="button"
@@ -346,7 +324,7 @@ export default function NewPatient({
             <button
               type="submit"
               disabled={isSubmitting}
-              className={`bg-blue-900 hover:bg-blue-950 text-white text-xs font-bold px-5 py-2 rounded flex items-center gap-1.5 transition disabled:opacity-50 font-mono tracking-wide shadow-sm`}
+              className="bg-blue-900 hover:bg-blue-950 text-white text-xs font-bold px-5 py-2 rounded flex items-center gap-1.5 transition disabled:opacity-50 font-mono tracking-wide shadow-sm"
               id="form-btn-submit"
             >
               {isSubmitting ? (
@@ -357,7 +335,7 @@ export default function NewPatient({
               ) : (
                 <>
                   <Check className="h-4 w-4" />
-                  REGISTRA E ARCHIVIA IN PATIENTS DB
+                  REGISTRA E SALVA
                 </>
               )}
             </button>
