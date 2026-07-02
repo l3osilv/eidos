@@ -1,21 +1,14 @@
 """
 Autenticazione JWT e gestione ruoli (medico / specializzando).
 
-Flusso di autenticazione:
-  1. L'utente invia username + password a POST /auth/login
-  2. Il backend verifica le credenziali contro MongoDB (hash bcrypt)
-  3. Se valide, genera un JWT firmato con HS256 contenente {sub: username, exp: ...}
-  4. Il frontend include il token in ogni richiesta successiva (header Authorization: Bearer <token>)
-  5. get_current_user() decodifica il token, cerca l'utente in MongoDB e lo restituisce
+Flusso:
+  1. POST /auth/login → verifica credenziali (bcrypt) → token JWT
+  2. Il frontend invia il token come header Authorization: Bearer <token>
+  3. get_current_user() decodifica il token e recupera l'utente da Mongo
+  4. require_role() blocca con 403 se il ruolo non è quello richiesto
 
-Gestione ruoli:
-  - Due ruoli previsti: "medico" e "specializzando"
-  - La validazione del referto (RF5.3) è riservata al ruolo "medico"
-  - require_role() è una dependency factory che genera un 403 se il ruolo non corrisponde
-
-Configurazione:
-  - JWT_SECRET: variabile d'ambiente obbligatoria — il default vuoto è solo per sviluppo locale
-  - ACCESS_TOKEN_EXPIRE_MINUTES: durata del token (default 8 ore, una giornata lavorativa)
+Il token dura 8 ore (una giornata lavorativa). JWT_SECRET va configurato
+nel .env — il default vuoto è solo per sviluppo locale.
 """
 
 import os
@@ -28,14 +21,10 @@ from jose import JWTError, jwt
 
 from database import users_collection
 
-# Chiave segreta per la firma JWT — deve essere una stringa lunga e casuale.
-# Il default vuoto funziona solo in sviluppo locale; in produzione va impostata
-# tramite variabile d'ambiente JWT_SECRET (vedi .env e guida_tecnica_backend.md).
+# Chiave per la firma JWT — in produzione va impostata tramite .env
 SECRET_KEY = os.getenv("JWT_SECRET", "")
 ALGORITHM = "HS256"
-# Durata del token: 8 ore, pari a una giornata lavorativa ospedaliera.
-# Scaduto il token, il frontend redirige automaticamente al login.
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 8
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 8  # 8 ore
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
@@ -43,23 +32,17 @@ VALID_ROLES = {"medico", "specializzando"}
 
 
 def hash_password(password: str) -> str:
-    """Genera l'hash bcrypt della password con salt casuale per la memorizzazione sicura."""
+    """Hash bcrypt con salt casuale."""
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
 
 def verify_password(password: str, hashed: str) -> bool:
-    """Confronta la password in chiaro con l'hash bcrypt salvato in MongoDB."""
+    """Confronta password in chiaro con hash bcrypt."""
     return bcrypt.checkpw(password.encode(), hashed.encode())
 
 
 def create_access_token(data: dict) -> str:
-    """
-    Crea un token JWT firmato con scadenza.
-
-    Il payload contiene il campo 'sub' (username) più il campo 'exp'
-    calcolato automaticamente. Il token viene poi incluso dal frontend
-    nell'header Authorization di ogni richiesta successiva.
-    """
+    """Crea JWT con scadenza. Il payload contiene {sub: username, exp: ...}."""
     return jwt.encode(
         {**data, "exp": datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)},
         SECRET_KEY, algorithm=ALGORITHM,
@@ -68,12 +51,8 @@ def create_access_token(data: dict) -> str:
 
 async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
     """
-    Dependency FastAPI che estrae e valida l'utente corrente dal token JWT.
-
-    Usata come Depends(get_current_user) in ogni endpoint protetto.
-    Decodifica il token, verifica la scadenza, e cerca l'utente in MongoDB.
-    Ritorna il documento utente completo (dict con username, role, nome, ecc.).
-    Lancia HTTP 401 se il token è invalido, scaduto, o l'utente non esiste più.
+    Dependency per endpoint protetti: decodifica il token,
+    cerca l'utente in Mongo, 401 se qualcosa non torna.
     """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -97,8 +76,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
 def require_role(*allowed_roles: str):
     """
     Dependency factory per proteggere un endpoint per ruolo.
-    Si usa come: Depends(require_role("medico"))
-    Ritorna 403 se l'utente autenticato non ha il ruolo richiesto.
+    Uso: Depends(require_role("medico"))
     """
 
     async def role_checker(current_user: dict = Depends(get_current_user)) -> dict:

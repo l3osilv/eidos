@@ -27,7 +27,7 @@ export default function Header({
             <h1 className="text-sm font-bold text-blue-900 tracking-tight flex items-center gap-2">
               MedicinAI
             </h1>
-            <p className="text-[9px] text-slate-400 tracking-wider font-semibold uppercase">UniTN-SSL-BrainCT-Patholgy</p>
+            <p className="text-[9px] text-slate-400 tracking-wider font-semibold uppercase">UniTN-SSL-BrainCT-Pathology</p>
           </div>
         </div>
 
