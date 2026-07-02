@@ -28,6 +28,8 @@ Endpoint implementati e requisiti di riferimento:
   GET    /patients/{id}/export        RF6.2
   GET    /health                      RNF7.1
 """
+import os
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 import io
 import logging
@@ -129,6 +131,7 @@ def _patient_status(p: dict) -> PatientStatus:
         nome=p["nome"],
         cognome=p["cognome"],
         codice_fiscale=p["codice_fiscale"],
+        gender=p.get("gender", "M"),
         data_nascita=date.fromisoformat(dn) if isinstance(dn, str) else dn,
         created_at=p["created_at"],
         num_slices=len(p.get("image_paths", [])),
@@ -248,6 +251,7 @@ async def create_patient(
     cognome: str = Form(...),
     codice_fiscale: str = Form(...),
     data_nascita: date = Form(...),
+    sesso: str = Form(...),
     files: List[UploadFile] = File(...),
     current_user: dict = Depends(get_current_user),
 ):
@@ -282,6 +286,7 @@ async def create_patient(
         "cognome": cognome,
         "codice_fiscale": codice_fiscale,
         "data_nascita": data_nascita.isoformat(),
+        "gender": sesso,
         "created_at": datetime.utcnow(),
         "created_by": current_user["username"],
         "image_paths": [],
@@ -546,6 +551,22 @@ async def validate_patient(
         {"$set": {"validated": True, "validated_by": signature}},
     )
     return {"patient_id": patient_id, "validated": True, "validated_by": signature}
+
+
+@app.post("/patients/{patient_id}/unvalidate")
+async def unvalidate_patient(
+    patient_id: str, current_user: dict = Depends(require_role("medico"))
+):
+    """
+    Riapre un referto validato rimuovendo la firma digitale (solo ruolo "medico").
+    Questo consente di rieseguire la classificazione o di editare nuovamente il referto.
+    """
+    await _get_patient(patient_id)
+    await patients_collection.update_one(
+        {"_id": _oid(patient_id)},
+        {"$set": {"validated": False, "validated_by": None}},
+    )
+    return {"patient_id": patient_id, "validated": False, "validated_by": None}
 
 
 # ---------------------------------------------------------------------------

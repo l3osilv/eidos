@@ -6,17 +6,18 @@ interface CoherenceAlertProps {
   hasMismatch: boolean;
 }
 
+const LABEL_LABELS = {
+  Blood: 'Emorragia / Sangue',
+  Ischemia: 'Ischemia acuta',
+  Chronic_Ischemia: 'Ischemia cronica',
+  Edema: 'Edema cerebrale',
+  Mass: 'Massa espansiva',
+};
+
 export default function CoherenceAlert({
   coherenceIssues,
   hasMismatch,
 }: CoherenceAlertProps) {
-  const labelLabels = {
-    Blood: 'Emorragia / Sangue',
-    Ischemia: 'Ischemia acuta',
-    Chronic_Ischemia: 'Ischemia cronica',
-    Edema: 'Edema cerebrale',
-    Mass: 'Massa espansiva',
-  };
 
   return (
     <section className="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm" id="coherence-alert-panel">
@@ -46,7 +47,7 @@ export default function CoherenceAlert({
               {coherenceIssues.map((issue, i) => {
                 const isMismatch = (issue.in_findings && !issue.mentioned_in_report);
                 if (!isMismatch) return null;
-                const mappedLabel = labelLabels[issue.label as keyof typeof labelLabels] || issue.label;
+                const mappedLabel = LABEL_LABELS[issue.label as keyof typeof LABEL_LABELS] || issue.label;
                 return (
                   <div key={i} className="bg-white border border-red-200 p-1.5 rounded text-[11px] text-red-900 font-mono flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-red-600 animate-ping"></span>

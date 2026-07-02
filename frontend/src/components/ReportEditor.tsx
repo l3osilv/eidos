@@ -1,4 +1,4 @@
-import { FileText, FileSpreadsheet, Save, Download, ShieldAlert, CheckCircle2, Lock, CheckCheck } from 'lucide-react';
+import { FileText, FileSpreadsheet, Save, Download, ShieldAlert, CheckCircle2, Lock, CheckCheck, RefreshCw } from 'lucide-react';
 import { Patient, User } from '../types';
 
 interface ReportEditorProps {
@@ -14,6 +14,7 @@ interface ReportEditorProps {
   onSaveDraftChanges: () => void;
   onExportTextFile: () => void;
   onValidateReport: () => void;
+  onUnvalidateReport: () => void;
 }
 
 export default function ReportEditor({
@@ -29,6 +30,7 @@ export default function ReportEditor({
   onSaveDraftChanges,
   onExportTextFile,
   onValidateReport,
+  onUnvalidateReport,
 }: ReportEditorProps) {
   return (
     <div className="space-y-4">
@@ -112,8 +114,9 @@ export default function ReportEditor({
                 <textarea
                   value={reportText}
                   onChange={(e) => setReportText(e.target.value)}
+                  disabled={patient.validated}
                   rows={14}
-                  className="w-full bg-transparent text-slate-800 text-[14px] md:text-[15px] focus:outline-none leading-relaxed font-serif resize-y"
+                  className="w-full bg-transparent text-slate-800 text-[14px] md:text-[15px] focus:outline-none leading-relaxed font-serif resize-y disabled:opacity-80"
                   style={{ fontFamily: '"EB Garamond", Georgia, serif', minHeight: '320px' }}
                   placeholder="Inizia a digitare il referto clinico..."
                   id="editorial-clinical-textarea"
@@ -140,7 +143,7 @@ export default function ReportEditor({
               <div className="flex gap-2">
                 <button
                   onClick={onSaveDraftChanges}
-                  disabled={isSavingReport || !reportText.trim()}
+                  disabled={isSavingReport || !reportText.trim() || patient.validated}
                   className="bg-blue-900 hover:bg-blue-950 text-white text-xs font-bold px-4 py-2 rounded flex items-center gap-1.5 transition disabled:opacity-50 font-mono shadow-sm uppercase tracking-wide cursor-pointer"
                   id="draft-save-btn"
                 >
@@ -167,13 +170,15 @@ export default function ReportEditor({
                 </button>
               </div>
 
-              <button
-                onClick={onGenerateReportText}
-                disabled={isGeneratingReport}
-                className="text-xs font-mono font-bold hover:text-blue-950 text-blue-900 underline cursor-pointer"
-              >
-                Ripristina bozza di referto originale
-              </button>
+              {!patient.validated && (
+                <button
+                  onClick={onGenerateReportText}
+                  disabled={isGeneratingReport}
+                  className="text-xs font-mono font-bold hover:text-blue-950 text-blue-900 underline cursor-pointer"
+                >
+                  Ripristina bozza di referto originale
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -182,19 +187,49 @@ export default function ReportEditor({
       {/* Sezione D: validazione clinica finale e firma digitale */}
       <section className="bg-white border border-slate-200 text-slate-800 rounded-lg p-4 shadow-sm overflow-hidden relative" id="final-medico-validation-panel">
         {patient.validated ? (
-          <div className="bg-emerald-50 border border-emerald-250 rounded-lg p-3.5 flex gap-3 items-center text-xs text-emerald-800" id="validated-successfully-badge bg">
-            <CheckCircle2 className="h-6 w-6 text-emerald-600 shrink-0" />
-            <div>
-              <h4 className="font-bold text-emerald-900 font-mono text-[11px] tracking-wider uppercase mb-0.5">
-                REFERTO VALIDATO CLINICAMENTE E FIRMATO
-              </h4>
-              <p className="text-slate-655 text-[11px] text-slate-650 leading-relaxed">
-                Questo referto è stato firmato digitalmente, archiviato nel sistema RIS/PACS ospedaliero ed è idoneo all'uso clinico definitivo.
-              </p>
-              <p className="text-[10px] font-mono text-emerald-700 mt-1.5 uppercase font-bold">
-                Firmato digitalmente da: {patient.validated_by}
-              </p>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="bg-emerald-50 border border-emerald-250 rounded-lg p-3.5 flex gap-3 items-center text-xs text-emerald-800 md:max-w-[70%]" id="validated-successfully-badge bg">
+              <CheckCircle2 className="h-6 w-6 text-emerald-600 shrink-0" />
+              <div>
+                <h4 className="font-bold text-emerald-900 font-mono text-[11px] tracking-wider uppercase mb-0.5">
+                  REFERTO VALIDATO CLINICAMENTE E FIRMATO
+                </h4>
+                <p className="text-slate-655 text-[11px] text-slate-650 leading-relaxed">
+                  Questo referto è stato firmato digitalmente, archiviato nel sistema RIS/PACS ospedaliero ed è idoneo all'uso clinico definitivo.
+                </p>
+                <p className="text-[10px] font-mono text-emerald-700 mt-1.5 uppercase font-bold">
+                  Firmato digitalmente da: {patient.validated_by}
+                </p>
+              </div>
             </div>
+            {currentUser?.role === 'medico' ? (
+              <button
+                disabled={isValidating}
+                onClick={onUnvalidateReport}
+                className="bg-amber-600 hover:bg-amber-500 disabled:bg-slate-100 disabled:text-slate-400 disabled:opacity-50 text-white text-xs font-bold px-4 py-2.5 rounded flex items-center justify-center gap-1.5 transition md:self-auto shadow-sm font-mono self-start uppercase tracking-wide cursor-pointer shrink-0"
+                id="btn-unvalidate-medico"
+              >
+                {isValidating ? (
+                  <>
+                    <span className="animate-spin h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full mr-1"></span>
+                    RIAPERTURA REFERTO...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    RIAPRI PER RIESAME
+                  </>
+                )}
+              </button>
+            ) : (
+              <div className="bg-slate-50 border border-slate-200 px-3 py-2 rounded text-[11px] text-slate-500 font-mono flex items-center gap-2 self-start md:self-auto shrink-0" id="trainee-reopen-restricted-box">
+                <Lock className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                <div>
+                  <span className="text-amber-800 font-bold block uppercase text-[10px]">Riesame Bloccato</span>
+                  <span>La riapertura del caso è riservata al Medico Strutturato.</span>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">

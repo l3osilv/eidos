@@ -12,7 +12,8 @@
             │                     │
       Modello I                Modello II
    (classificazione:         (refertazione:
-   DenseNet-121 + SimCLR)    rule-based sui findings)
+   DenseNet-121 + SimCLR     rule-based sui findings)
+   AvgAggregator)
 ```
 
 **Principio guida:** i due modelli sono moduli indipendenti e sostituibili. Il Modello II non vede mai le immagini: riceve i findings già calcolati dal Modello I. Questo garantisce coerenza per costruzione — il referto non può contraddire i findings perché è generato a partire da essi.
@@ -43,6 +44,16 @@ backend/
 ├── storage.py           # salvataggio e lettura immagini su disco
 ├── model_I.py           # wrapper classificazione (SSL-BrainCT-Pathology)
 ├── model_II.py          # generatore referto rule-based
+├── models_config/       # JSON di configurazione per classe (parametri usati in training)
+│   ├── config_blood.json
+│   ├── config_edema.json
+│   ├── config_ischemia.json
+│   └── config_massa.json
+├── checkpoints/         # checkpoint PyTorch fine-tuned (da posizionare manualmente)
+│   ├── model_I_blood_best.pth
+│   ├── model_I_mass_best.pth
+│   ├── model_I_ischemia_best.pth
+│   └── model_I_edema_best.pth
 ├── init_db.py           # script di inizializzazione DB e primo utente
 ├── requirements.txt
 ├── .env                 # variabili d'ambiente (da creare — vedi setup_mongodb.md)
@@ -121,7 +132,9 @@ Il checkpoint finale viene salvato in `outputs/<run_name>/` (verificare il path 
 
 ### 4.5 Integrazione in `model_I.py`
 
-`model_I.py` è già completo e funzionante. I checkpoint vanno posizionati secondo i path definiti in `CHECKPOINT_PATHS`:
+`model_I.py` è già completo e funzionante. I parametri dell'architettura (encoder, aggregatore, testa) vengono letti dinamicamente dai file JSON in `models_config/`, garantendo allineamento automatico con i parametri usati durante il training.
+
+I checkpoint vanno posizionati secondo i path definiti in `CHECKPOINT_PATHS`:
 
 ```python
 CHECKPOINT_PATHS: Dict[str, str] = {
@@ -132,7 +145,16 @@ CHECKPOINT_PATHS: Dict[str, str] = {
 }
 ```
 
-La variabile d'ambiente `SSL_BRAINCT_SRC` deve puntare alla cartella `stage2_2d_slice_level/supervised_finetuning` della repo clonata (default: percorso relativo affiancato alla cartella `backend/`).
+I file JSON di configurazione in `models_config/` contengono tutti i parametri usati nel training (encoder, aggregatore, preprocessing, iperparametri). `model_I.py` li carica automaticamente all'avvio e li usa per ricostruire la stessa architettura usata durante il fine-tuning:
+
+| Parametro | Valore (da JSON) | Descrizione |
+|---|---|---|
+| ENCODER_NAME | densenet121 | Encoder backbone |
+| AGGREGATOR_TYPE | avg | Strategia di aggregazione slice (media) |
+| AGGREGATOR_HIDDEN | 512 | Dimensione hidden dell'aggregatore |
+| HEAD_HIDDEN | 256 | Dimensione hidden della testa di classificazione |
+| HEAD_DROPOUT | 0.3 | Dropout nella testa |
+| NUM_SLICES | 8 | Numero di slice per paziente |
 
 ### 4.6 Preprocessing — punto critico
 
@@ -217,6 +239,7 @@ curl http://localhost:8000/health
 | GET | `/patients/{id}/coherence` | autenticato | RF4.1 |
 | PUT | `/patients/{id}/report` | autenticato | RF3.2, RF3.4 |
 | POST | `/patients/{id}/validate` | **solo medico** | RF5.3 |
+| POST | `/patients/{id}/unvalidate` | **solo medico** | RF5.3 |
 | GET | `/patients/{id}/export` | autenticato | RF6.2 |
 | GET | `/health` | — | RNF7.1 |
 

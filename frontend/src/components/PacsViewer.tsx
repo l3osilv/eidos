@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Play, Pause, RefreshCw, AlertTriangle, Maximize2, ShieldCheck, Activity } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ChevronLeft, ChevronRight, RefreshCw, AlertTriangle, Activity } from 'lucide-react';
 import { Patient } from '../types';
 import { apiGetSliceImage } from '../api';
 
@@ -14,14 +14,12 @@ export default function PacsViewer({
   selectedIndex,
   onSliceChange,
 }: PacsViewerProps) {
-  const [imageUrl, setImageUrl] = useState<string>('');
-  const [loading, setLoading] = useState<boolean>(true);
+  const [imageUrl, setImageUrl] = useState('');
+  const [loading, setLoading] = useState(true);
   const [errorStatus, setErrorStatus] = useState<string | null>(null);
-  const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const playIntervalRef = useRef<number | null>(null);
 
-  // Ricarichiamo ogni volta che cambia il paziente o la slice selezionata.
-  // Flag 'active' per evitare aggiornamenti di stato su componente smontato.
+  // Rifaccio la fetch quando cambia la slice o il paziente.
+  // Uso il flag 'active' per evitare aggiornamenti di stato se il componente viene smontato prima della fine.
   useEffect(() => {
     let active = true;
     let oldUrl = imageUrl;
@@ -31,7 +29,7 @@ export default function PacsViewer({
 
     async function loadSlice() {
       try {
-        const src = await apiGetSliceImage(patient.patient_id, selectedIndex, patient);
+        const src = await apiGetSliceImage(patient.patient_id, selectedIndex);
         if (active) {
           setImageUrl(src);
           setLoading(false);
@@ -48,7 +46,7 @@ export default function PacsViewer({
 
     return () => {
       active = false;
-      // Revochiamo il blob URL creato da createObjectURL per non perdere memoria
+      // Rilascio il blob URL precedente per prevenire memory leak nel browser
       if (oldUrl.startsWith('blob:')) {
         URL.revokeObjectURL(oldUrl);
       }
@@ -63,24 +61,15 @@ export default function PacsViewer({
     onSliceChange((selectedIndex + 1) % 8);
   };
 
-  // Le miniature vengono caricate in sequenza all'apertura del paziente.
-  // Il reload al cambio di has_classification garantisce che le thumb si aggiornino
-  // dopo la prima classificazione (anche se le immagini non cambiano).
+  // Carico in parallelo tutte le miniature in basso.
+  // Aggiungo has_classification alle dipendenze così ricarico i file aggiornati se il backend calcola nuovi risultati.
   const [thumbUrls, setThumbUrls] = useState<string[]>([]);
   useEffect(() => {
-    async function loadThumbs() {
-      const urls: string[] = [];
-      for (let i = 0; i < 8; i++) {
-        try {
-          const src = await apiGetSliceImage(patient.patient_id, i, patient);
-          urls.push(src);
-        } catch {
-          urls.push('');
-        }
-      }
-      setThumbUrls(urls);
-    }
-    loadThumbs();
+    Promise.all(
+      Array.from({ length: 8 }, (_, i) =>
+        apiGetSliceImage(patient.patient_id, i).catch(() => '')
+      )
+    ).then(setThumbUrls);
   }, [patient.patient_id, patient.has_classification]);
 
   return (

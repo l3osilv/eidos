@@ -157,6 +157,7 @@ class PatientStatus(BaseModel):
     nome: str
     cognome: str
     codice_fiscale: str
+    gender: str = "M"
     data_nascita: date
     created_at: datetime
     num_slices: int

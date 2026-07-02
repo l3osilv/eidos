@@ -167,19 +167,26 @@ export default function App() {
 
                   <Dashboard
                     patients={patients}
+                    currentUser={currentUser}
                     onSelectPatient={(id) => navigate(`/patients/${id}`)}
                     onOpenNewPatientForm={() => navigate('/new-patient')}
                   />
                 </div>
               )}
 
-              {currentPath === '/new-patient' && (
-                <NewPatient
-                  onBack={handleBackToDashboard}
-                  onSubmit={handleCreateNewPatient}
-                  isSubmitting={isFormSubmitting}
-                />
-              )}
+              {currentPath === '/new-patient' && (() => {
+                if (currentUser?.role !== 'medico') {
+                  setTimeout(() => navigate('/dashboard'), 0);
+                  return null;
+                }
+                return (
+                  <NewPatient
+                    onBack={handleBackToDashboard}
+                    onSubmit={handleCreateNewPatient}
+                    isSubmitting={isFormSubmitting}
+                  />
+                );
+              })()}
 
               {currentPath === '/profile' && (
                 <Profile

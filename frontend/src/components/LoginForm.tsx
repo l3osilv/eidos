@@ -13,7 +13,6 @@ export default function LoginForm({
   onLoginSuccess,
   isRegister = false,
 }: LoginFormProps) {
-  const isRegistrazione = isRegister;
   const [nome, setNome] = useState('');
   const [cognome, setCognome] = useState('');
   const [username, setUsername] = useState('');
@@ -25,16 +24,16 @@ export default function LoginForm({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [regSuccessMessage, setRegSuccessMessage] = useState<string | null>(null);
 
+  const generateUsername = (n: string, c: string) => `${n.trim()}${c.trim()}`.toLowerCase().replace(/\s+/g, '');
+
   const handleNomeChange = (val: string) => {
     setNome(val);
-    const generated = `${val.trim()}${cognome.trim()}`.toLowerCase().replace(/\s+/g, '');
-    setUsername(generated);
+    setUsername(generateUsername(val, cognome));
   };
 
   const handleCognomeChange = (val: string) => {
     setCognome(val);
-    const generated = `${nome.trim()}${val.trim()}`.toLowerCase().replace(/\s+/g, '');
-    setUsername(generated);
+    setUsername(generateUsername(nome, val));
   };
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
@@ -44,14 +43,14 @@ export default function LoginForm({
     setLoading(true);
 
     try {
-      // Payload in formato urlencoded per compatibilità con OAuth2
+      // Uso URLSearchParams per inviare i dati in formato urlencoded, richiesto da FastAPI OAuth2
       const params = new URLSearchParams();
       params.append('username', username.trim());
       params.append('password', password);
 
       const res = await apiLogin(params);
 
-      // Salviamo il token di accesso in memoria
+      // Salvo il token per le chiamate API successive
       setTokenMemory(res.access_token);
 
       const loggedUser: User = {
@@ -79,9 +78,8 @@ export default function LoginForm({
     setLoading(true);
 
     try {
-      const generatedUsername = `${nome.trim()}${cognome.trim()}`.toLowerCase().replace(/\s+/g, '');
       const payload = {
-        username: generatedUsername,
+        username,
         password,
         nome: nome.trim(),
         cognome: cognome.trim(),
@@ -92,9 +90,8 @@ export default function LoginForm({
       await apiRegister(payload);
       navigate('/login?registered=true');
 
-      // Svuotiamo la password ma teniamo lo username inserito
+      // Svuoto la password ma mantengo l'username così l'utente non deve reinserirlo
       setPassword('');
-      setUsername(generatedUsername);
     } catch (err: any) {
       setErrorMessage(err.message || "Impossibile registrare l'account sanitario inserito.");
     } finally {
@@ -128,7 +125,7 @@ export default function LoginForm({
               setErrorMessage(null);
               setRegSuccessMessage(null);
             }}
-            className={`flex-1 py-3 text-xs font-bold font-mono uppercase border-r border-slate-150 transition ${!isRegistrazione
+            className={`flex-1 py-3 text-xs font-bold font-mono uppercase border-r border-slate-150 transition ${!isRegister
               ? 'bg-white text-blue-950 border-t-2 border-t-blue-900'
               : 'text-slate-500 hover:text-slate-800'
               }`}
@@ -141,7 +138,7 @@ export default function LoginForm({
               setErrorMessage(null);
               setRegSuccessMessage(null);
             }}
-            className={`flex-1 py-3 text-xs font-bold font-mono uppercase transition ${isRegistrazione
+            className={`flex-1 py-3 text-xs font-bold font-mono uppercase transition ${isRegister
               ? 'bg-white text-blue-950 border-t-2 border-t-blue-900'
               : 'text-slate-500 hover:text-slate-800'
               }`}
@@ -168,9 +165,9 @@ export default function LoginForm({
             </div>
           )}
 
-          <form onSubmit={isRegistrazione ? handleRegisterSubmit : handleLoginSubmit} className="space-y-4 outline-none">
+          <form onSubmit={isRegister ? handleRegisterSubmit : handleLoginSubmit} className="space-y-4 outline-none">
             {/* Nome e Cognome (solo in fase di registrazione) */}
-            {isRegistrazione && (
+            {isRegister && (
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[11px] font-semibold text-slate-600 mb-1">Nome</label>
@@ -212,7 +209,7 @@ export default function LoginForm({
             {/* Nome utente */}
             <div>
               <label className="block text-[11px] font-semibold text-slate-600 mb-1 font-mono uppercase tracking-wide">
-                {isRegistrazione ? 'ID Credenziali (Username Auto-Generato)' : 'ID Credenziali (Username)'}
+                {isRegister ? 'ID Credenziali (Username Auto-Generato)' : 'ID Credenziali (Username)'}
               </label>
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 font-mono">
@@ -222,16 +219,16 @@ export default function LoginForm({
                   type="text"
                   required
                   value={username}
-                  onChange={(e) => !isRegistrazione && setUsername(e.target.value)}
-                  readOnly={isRegistrazione}
-                  placeholder={isRegistrazione ? "mariorossi (automatico)" : "E.g. mariorossi"}
+                  onChange={(e) => !isRegister && setUsername(e.target.value)}
+                  readOnly={isRegister}
+                  placeholder={isRegister ? "mariorossi (automatico)" : "E.g. mariorossi"}
                   className={`w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded text-slate-800 focus:outline-none font-mono ${
-                    isRegistrazione ? 'bg-slate-100 text-slate-500 cursor-not-allowed border-dashed' : 'bg-white focus:ring-1 focus:ring-blue-500'
+                    isRegister ? 'bg-slate-100 text-slate-500 cursor-not-allowed border-dashed' : 'bg-white focus:ring-1 focus:ring-blue-500'
                   }`}
                   id="login-username-input"
                 />
               </div>
-              {isRegistrazione && (
+              {isRegister && (
                 <p className="text-[10px] text-slate-400 mt-1 font-mono">
                   L'ID credenziali per il login viene generato concatenando Nome e Cognome in minuscolo.
                 </p>
@@ -258,7 +255,7 @@ export default function LoginForm({
             </div>
 
             {/* Selezione del ruolo (solo in fase di registrazione) */}
-            {isRegistrazione && (
+            {isRegister && (
               <>
                 <div className="bg-slate-50 p-2.5 rounded border border-slate-200">
                   <label className="block text-[10px] font-semibold text-slate-500 mb-1.5 font-mono">RUOLO SANITARIO DEL NUOVO ACCOUNT</label>
@@ -328,7 +325,7 @@ export default function LoginForm({
                   AUTENTICAZIONE IN CORSO...
                 </>
               ) : (
-                isRegistrazione ? 'Registra account e crea credenziali' : 'Accedi ed apri RIS/PACS'
+                isRegister ? 'Registra account e crea credenziali' : 'Accedi ed apri RIS/PACS'
               )}
             </button>
           </form>

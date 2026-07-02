@@ -1,24 +1,46 @@
 """
 Modello II — Generazione referto (RF3).
 
-Non è un modello generativo addestrato — è un generatore rule-based che compone
-frasi template a partire dai findings del Modello I.
+Due livelli, in sequenza:
+1. Generatore rule-based (deterministico nella struttura, non deterministico
+   nella scelta delle varianti) che compone frasi template a partire dai
+   findings del Modello I. Questo scheletro è SEMPRE generato e SEMPRE
+   clinicamente corretto per costruzione, perché deriva direttamente dai
+   findings — è la rete di sicurezza del sistema.
+2. Rifinitura linguistica opzionale via Anthropic API (llm_refiner.py), che
+   riformula lo scheletro in prosa più naturale SENZA poter alterare il
+   contenuto clinico. Attiva solo se ANTHROPIC_API_KEY è configurata e
+   ENABLE_LLM_REFINEMENT non è disattivato esplicitamente. In caso di
+   qualunque problema (API non raggiungibile, risposta che non supera la
+   validazione di coerenza) si ricade silenziosamente sullo scheletro.
 
-Il vantaggio collaterale di questo approccio è che il referto non può contraddire
-i findings per costruzione — il testo viene generato direttamente da loro, quindi
-il check di coerenza è quasi sempre verde tranne se il medico modifica manualmente
-il testo togliendo un finding positivo.
+Il vantaggio architetturale di questo schema è che il referto non può
+contraddire i findings per costruzione: lo scheletro deriva da loro
+direttamente, e la rifinitura LLM è validata contro di essi prima di
+essere accettata — quindi il check di coerenza (/coherence in main.py)
+resta verde anche con la rifinitura attiva, salvo modifica manuale
+successiva del medico.
 
-
-Se chiami /report più volte sullo stesso paziente ottieni testo diverso ogni volta
-(il contenuto clinico è identico, varia la formulazione).
+Se chiami /report più volte sullo stesso paziente ottieni testo diverso
+ogni volta (il contenuto clinico è identico, varia la formulazione, sia
+nel ramo rule-based puro sia in quello rifinito dall'LLM).
 """
 
 import logging
+import os
 import random
 from typing import Dict, List, Optional
 
+import llm_refiner
+
 logger = logging.getLogger("model_II")
+
+# Se True e ANTHROPIC_API_KEY è configurata, il testo rule-based viene
+# passato a llm_refiner per una rifinitura linguistica. Se la rifinitura
+# fallisce o non supera la validazione di sicurezza, si ricade sempre
+# sullo scheletro rule-based — questo flag non introduce alcun rischio
+# di indisponibilità, solo un'eventuale differenza di stile.
+ENABLE_LLM_REFINEMENT = os.getenv("ENABLE_LLM_REFINEMENT", "true").lower() == "true"
 
 LABEL_ORDER = ["Blood", "Ischemia", "Chronic_Ischemia", "Edema", "Mass"]
 
@@ -339,11 +361,12 @@ class ReportModel:
     """
 
     def __init__(self):
-        self.model = "rule_based_v3_nondeterministic"
+        self.model = "rule_based_v3_with_optional_llm_refinement"
 
     def load(self):
+        status = "attiva" if (ENABLE_LLM_REFINEMENT and llm_refiner.ANTHROPIC_API_KEY) else "disattiva"
         logger.info(
-            "Modello II v3: nessun caricamento necessario, generatore rule-based"
+            "Modello II v3: generatore rule-based, rifinitura LLM %s", status
         )
 
     def generate_from_findings(
@@ -362,6 +385,14 @@ class ReportModel:
         seed:       se passato, l'output è riproducibile — utile per i test
                     e per la sezione di valutazione della tesi. Se None (default)
                     ogni chiamata produce una formulazione diversa.
+
+        Se ENABLE_LLM_REFINEMENT è attivo e ANTHROPIC_API_KEY è configurata,
+        lo scheletro rule-based viene rifinito linguisticamente da un LLM
+        (vedi llm_refiner.py). La rifinitura viene scartata — e si ricade
+        silenziosamente sullo scheletro — se: l'API non è raggiungibile,
+        la chiamata fallisce per qualsiasi motivo, oppure il testo rifinito
+        non supera la validazione di sicurezza (un finding positivo non
+        deve mai sparire durante la riformulazione).
         """
         rng = random.Random(seed)
 
@@ -374,12 +405,32 @@ class ReportModel:
         conclusioni = _compose_conclusioni(findings, no_finding, rng)
         raccomandazioni = _compose_raccomandazioni(findings, no_finding, rng)
 
-        return (
+        skeleton = (
             f"TECNICA:\n{tecnica}\n\n"
             f"REPERTI:\n{reperti}\n\n"
             f"CONCLUSIONI:\n{conclusioni}\n\n"
             f"RACCOMANDAZIONI:\n{raccomandazioni}"
         )
+
+        if not ENABLE_LLM_REFINEMENT:
+            return skeleton
+
+        refined = llm_refiner.refine_report(skeleton)
+        if refined is None:
+            # API non configurata, non raggiungibile, o risposta vuota:
+            # già loggato dentro refine_report(). Fallback silenzioso.
+            return skeleton
+
+        if not llm_refiner.validate_refinement(refined, findings):
+            # La riformulazione ha perso un finding positivo: non fidarsi
+            # del testo rifinito, restare sullo scheletro verificato.
+            logger.warning(
+                "Testo rifinito dall'LLM scartato per fallimento della validazione "
+                "di coerenza clinica: uso lo scheletro rule-based"
+            )
+            return skeleton
+
+        return refined
 
 
 # Singleton importato da main.py

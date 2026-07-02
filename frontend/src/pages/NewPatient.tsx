@@ -54,15 +54,15 @@ export default function NewPatient({
   };
 
   const addFiles = (files: File[]) => {
-    // Filtriamo subito i non-immagini, ma avvisiamo l'utente
+    // Verifico che i file selezionati siano effettivamente immagini, altrimenti mostro un errore
     const imageFiles = files.filter(f => f.type.startsWith('image/'));
 
     if (imageFiles.length !== files.length) {
       setErrorMessage("Attenzione: Vengono accettati esclusivamente file immagine (es. PNG, JPG).");
     }
 
-    // Aggiungiamo i nuovi file a quelli già presenti ed eliminiamo duplicati
-    // (stesso nome + stessa dimensione = stesso file)
+    // Unisco i nuovi file a quelli precedenti e rimuovo eventuali duplicati 
+    // (considero identici i file con stesso nome e stessa dimensione)
     setSelectedFiles((prev) => {
       const combined = [...prev, ...imageFiles];
       const unique = combined.filter((v, i, a) => a.findIndex(t => t.name === v.name && t.size === v.size) === i);
@@ -82,7 +82,7 @@ export default function NewPatient({
     e.preventDefault();
     setErrorMessage(null);
 
-    // Validazione dei campi
+    // Controllo che tutti i campi obbligatori siano stati compilati
     if (!nome.trim() || !cognome.trim() || !cf.trim() || !dataNascita) {
       setErrorMessage("Tutti i dati anagrafici del paziente sono obbligatori.");
       return;
@@ -93,23 +93,28 @@ export default function NewPatient({
       return;
     }
 
-    // Serve esattamente 8 slice — il backend rifiuterebbe con 400 in ogni caso,
-    // ma meglio validare in anticipo per non fare una richiesta inutile
+    // Devono essere esattamente 8 immagini per soddisfare i requisiti del backend.
+    // Eseguo il controllo lato frontend per evitare una richiesta API inutile.
     if (selectedFiles.length !== 8) {
       setErrorMessage(`Requisito Neuroradiologico Mancante: Il sistema richiede il caricamento di esattamente 8 slice assiali consecutive in formato immagine per procedere. Al momento hai selezionato ${selectedFiles.length} file.`);
       return;
     }
 
     try {
-      // Costruiamo il FormData a mano perché FastAPI si aspetta
-      // campi form + lista file con lo stesso key 'files'
+      // Costruisco manualmente il FormData: 
+      // appendo ogni singolo file sotto la stessa chiave 'files' come richiesto dal backend
       const formData = new FormData();
       formData.append('nome', nome.trim());
       formData.append('cognome', cognome.trim());
       formData.append('codice_fiscale', cf.toUpperCase().trim());
       formData.append('data_nascita', dataNascita);
       formData.append('sesso', sesso);
-      selectedFiles.forEach((file) => {
+      // Ordino le slice in base al nome del file (ordinamento naturale/numerico) per garantire che
+      // arrivino al backend nell'ordine corretto (slice_0, slice_1, ..., slice_7)
+      const sortedFiles = [...selectedFiles].sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
+      );
+      sortedFiles.forEach((file) => {
         formData.append('files', file);
       });
 

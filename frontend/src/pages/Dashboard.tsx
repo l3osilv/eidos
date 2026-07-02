@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Search, Calendar, FileSpreadsheet, Plus, Database } from 'lucide-react';
-import { Patient } from '../types';
+import { Patient, User } from '../types';
 
 interface DashboardProps {
   patients: Patient[];
+  currentUser: User | null;
   onSelectPatient: (id: string) => void;
   onOpenNewPatientForm: () => void;
 }
@@ -12,14 +13,15 @@ type FilterStatus = 'ALL' | 'TO_CLASSIFY' | 'CLASSIFIED' | 'REPORT_GENERATED' | 
 
 export default function Dashboard({
   patients,
+  currentUser,
   onSelectPatient,
   onOpenNewPatientForm,
 }: DashboardProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<FilterStatus>('ALL');
 
-  // Stato aggregato del paziente ricavato dai tre flag booleani.
-  // L'ordine di precedenza è: validated > has_report > has_classification > niente
+  // Calcolo uno "status" unico dai tre flag del database.
+  // Seguo un ordine di precedenza: prima se è validato, poi refertato, ecc.
   const getPatientStatus = (p: Patient): 'TO_CLASSIFY' | 'CLASSIFIED' | 'REPORT_GENERATED' | 'VALIDATED' => {
     if (p.validated) return 'VALIDATED';
     if (p.has_report) return 'REPORT_GENERATED';
@@ -62,7 +64,7 @@ export default function Dashboard({
     }
   };
 
-  // Filtraggio combinato: testo libero su nome/CF/ID + tab di stato
+  // Filtro la lista dei pazienti combinando la ricerca testuale e lo stato selezionato
   const filteredPatients = patients.filter(p => {
     const query = searchQuery.toLowerCase().trim();
     const matchesSearch =
@@ -72,12 +74,7 @@ export default function Dashboard({
       p.patient_id.toLowerCase().includes(query);
 
     const status = getPatientStatus(p);
-    const matchesStatus =
-      statusFilter === 'ALL' ||
-      (statusFilter === 'TO_CLASSIFY' && status === 'TO_CLASSIFY') ||
-      (statusFilter === 'CLASSIFIED' && status === 'CLASSIFIED') ||
-      (statusFilter === 'REPORT_GENERATED' && status === 'REPORT_GENERATED') ||
-      (statusFilter === 'VALIDATED' && status === 'VALIDATED');
+    const matchesStatus = statusFilter === 'ALL' || statusFilter === status;
 
     return matchesSearch && matchesStatus;
   });
@@ -113,14 +110,26 @@ export default function Dashboard({
         </div>
 
         {/* Bottone per aggiungere un paziente */}
-        <button
-          onClick={onOpenNewPatientForm}
-          className="bg-blue-900 hover:bg-blue-950 text-white text-xs font-bold px-4 py-2 rounded flex items-center gap-1.5 self-start md:self-auto transition shadow-sm uppercase font-mono tracking-wide"
-          id="btn-registra-paziente"
-        >
-          <Plus className="h-4 w-4" />
-          REGISTRA NUOVO PAZIENTE
-        </button>
+        {currentUser?.role === 'medico' ? (
+          <button
+            onClick={onOpenNewPatientForm}
+            className="bg-blue-900 hover:bg-blue-950 text-white text-xs font-bold px-4 py-2 rounded flex items-center gap-1.5 self-start md:self-auto transition shadow-sm uppercase font-mono tracking-wide cursor-pointer"
+            id="btn-registra-paziente"
+          >
+            <Plus className="h-4 w-4" />
+            REGISTRA NUOVO PAZIENTE
+          </button>
+        ) : (
+          <button
+            disabled
+            className="bg-slate-200 text-slate-400 text-xs font-bold px-4 py-2 rounded flex items-center gap-1.5 self-start md:self-auto transition shadow-sm uppercase font-mono tracking-wide cursor-not-allowed"
+            title="La registrazione di nuovi pazienti è riservata al Medico Strutturato"
+            id="btn-registra-paziente-disabilitato"
+          >
+            <Plus className="h-4 w-4" />
+            REGISTRA NUOVO PAZIENTE
+          </button>
+        )}
       </div>
 
       {/* Pannello filtri: barra di ricerca e tab di stato */}

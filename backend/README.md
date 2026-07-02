@@ -222,7 +222,7 @@ La documentazione interattiva Swagger è disponibile su: **http://localhost:8000
 
 | Metodo | Endpoint                          | Auth | Descrizione                                      |
 | ------ | --------------------------------- | ---- | ------------------------------------------------ |
-| POST   | `/patients`                       | Sì   | Crea paziente + upload 8 slice TC (multipart)    |
+| POST   | `/patients`                       | Sì   | Crea paziente + upload 8 slice TC (form: nome, cognome, codice_fiscale, data_nascita, sesso, files) |
 | GET    | `/patients`                       | Sì   | Lista pazienti con stato workflow                |
 | GET    | `/patients/{id}`                  | Sì   | Dettaglio singolo paziente                       |
 | GET    | `/patients/{id}/slices/{index}`   | Sì   | Singola slice come immagine PNG (indice 0–7)     |
@@ -238,10 +238,11 @@ La documentazione interattiva Swagger è disponibile su: **http://localhost:8000
 
 ### Validazione ed esportazione
 
-| Metodo | Endpoint                        | Auth     | Descrizione                                          |
-| ------ | ------------------------------- | -------- | ---------------------------------------------------- |
-| POST   | `/patients/{id}/validate`       | Medico   | Validazione referto (solo ruolo "medico")            |
-| GET    | `/patients/{id}/export`         | Sì       | Esportazione referto in formato testo (text/plain)   |
+| Metodo | Endpoint                          | Auth     | Descrizione                                          |
+| ------ | --------------------------------- | -------- | ---------------------------------------------------- |
+| POST   | `/patients/{id}/validate`         | Medico   | Validazione referto con firma digitale (solo "medico") |
+| POST   | `/patients/{id}/unvalidate`       | Medico   | Annulla la validazione del referto per modifiche (solo "medico") |
+| GET    | `/patients/{id}/export`           | Sì       | Esportazione referto in formato testo (text/plain)   |
 
 ---
 

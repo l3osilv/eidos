@@ -72,6 +72,4 @@ export interface CoherenceResponse {
   has_mismatch: boolean;
 }
 
-export interface ConnectionSettings {
-  baseUrl: string;
-}
+

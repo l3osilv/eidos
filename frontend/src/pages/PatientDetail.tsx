@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { ArrowLeft, Download, AlertCircle, CheckCheck } from 'lucide-react';
-import { Patient, Finding, User, ConnectionSettings } from '../types';
+import { Patient, Finding, User, CoherenceIssue } from '../types';
 import {
   apiClassifyPatient, apiGenerateReport, apiUpdateReport,
-  apiGetCoherence, apiValidateReport, apiExportReport
+  apiValidateReport, apiExportReport, apiUnvalidateReport
 } from '../api';
 import PacsViewer from '../components/PacsViewer';
 import FindingsPanel from '../components/FindingsPanel';
@@ -14,7 +14,6 @@ import LoadingNotice from '../components/LoadingNotice';
 interface PatientDetailProps {
   patient: Patient;
   currentUser: User | null;
-  config: ConnectionSettings;
   onBack: () => void;
   onUpdatePatientState: (updatedPatient: Patient) => void;
 }
@@ -31,20 +30,20 @@ export default function PatientDetail({
   const [disclaimer, setDisclaimer] = useState<string>('');
   const [isLoadingDetail, setIsLoadingDetail] = useState<boolean>(false);
 
-  // Stato di caricamento per ogni azione asincrona (separati per poter disabilitare
-  // solo il bottone coinvolto senza bloccare l'intera interfaccia)
+  // Gestisco un booleano per ogni singola azione asincrona.
+  // In questo modo posso disabilitare solo il pulsante premuto senza bloccare tutto lo schermo.
   const [isClassifying, setIsClassifying] = useState<boolean>(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState<boolean>(false);
   const [isSavingReport, setIsSavingReport] = useState<boolean>(false);
   const [isValidating, setIsValidating] = useState<boolean>(false);
   const [errorText, setErrorText] = useState<string | null>(null);
 
-  // Risultati del check di coerenza findings/testo referto
-  const [coherenceIssues, setCoherenceIssues] = useState<any[]>([]);
+  // Risultati e avvisi per il controllo di coerenza tra reperti e testo
+  const [coherenceIssues, setCoherenceIssues] = useState<CoherenceIssue[]>([]);
   const [hasMismatch, setHasMismatch] = useState<boolean>(false);
 
-  // Al cambio di paziente resettiamo tutto lo stato locale e ricarichiamo
-  // i risultati se l'esame è già stato classificato in precedenza
+  // Quando seleziono un paziente diverso resetto tutti gli stati,
+  // e se ha già dei risultati salvati chiedo i dati al backend.
   useEffect(() => {
     setActiveSlice(0);
     setFindings([]);
@@ -59,22 +58,35 @@ export default function PatientDetail({
     }
   }, [patient.patient_id]);
 
-  // Rieseguiamo il check di coerenza ogni volta che cambia il testo del referto o
-  // lo stato della classificazione — così l'alert si aggiorna senza cliccare nulla
+  // Calcolo il controllo di coerenza localmente in tempo reale sul client
+  // per evitare continue chiamate di rete inefficienti a ogni battitura di tasto.
   useEffect(() => {
-    if (patient.has_classification && patient.has_report) {
-      checkCoherence();
+    if (patient.has_classification && patient.has_report && findings.length > 0 && reportText) {
+      const reportLower = reportText.toLowerCase();
+      const issues = findings.map((f) => {
+        const term = f.label.toLowerCase().replace(/_/g, ' ');
+        const mentioned = reportLower.includes(term);
+        return {
+          label: f.label,
+          in_findings: f.positive,
+          mentioned_in_report: mentioned,
+        };
+      });
+      setCoherenceIssues(issues);
+      setHasMismatch(issues.some((i) => i.in_findings !== i.mentioned_in_report));
+    } else {
+      setCoherenceIssues([]);
+      setHasMismatch(false);
     }
-  }, [patient.has_classification, patient.has_report, reportText]);
+  }, [patient.has_classification, patient.has_report, findings, reportText]);
 
-  // Carichiamo in parallelo findings e referto se già esistono — più veloce che
-  // fare due richieste in sequenza.
+  // Carico report e reperti in parallelo con un Promise.all, è molto più veloce rispetto all'esecuzione in sequenza.
   const loadClassificationResults = async () => {
     setIsLoadingDetail(true);
     setErrorText(null);
     try {
       const classifyPromise = apiClassifyPatient(patient.patient_id, false);
-      // force=false: se la classificazione esiste già il backend la ritorna senza ricalcolare
+      // Uso force=false così il server restituisce i dati esistenti senza ricalcolare tutto
       const reportPromise = patient.has_report 
         ? apiGenerateReport(patient.patient_id, false) 
         : Promise.resolve(null);
@@ -100,8 +112,8 @@ export default function PatientDetail({
       const res = await apiClassifyPatient(patient.patient_id, true);
       setFindings(res.findings);
 
-      // Aggiorniamo lo stato nella lista principale del componente padre
-      // (per aggiornare il badge nella dashboard senza ricaricare)
+      // Aggiorno lo stato del paziente e lo passo all'App padre,
+      // così il badge nella dashboard cambia senza dover ricaricare la lista intera
       const updatedPat = { ...patient, has_classification: true };
       onUpdatePatientState(updatedPat);
     } catch (err: any) {
@@ -149,16 +161,6 @@ export default function PatientDetail({
     }
   };
 
-  const checkCoherence = async () => {
-    try {
-      const res = await apiGetCoherence(patient.patient_id);
-      setCoherenceIssues(res.issues);
-      setHasMismatch(res.has_mismatch);
-    } catch {
-      // Errori silenziosi: il check di coerenza è ausiliario, non blocca il workflow
-    }
-  };
-
   const handleValidateReport = async () => {
     if (currentUser?.role !== 'medico') {
       setErrorText('Accesso non autorizzato (403): Solo personale medico strutturato possiede la firma digitale per validare il referto.');
@@ -173,6 +175,28 @@ export default function PatientDetail({
         ...patient,
         validated: true,
         validated_by: res.validated_by
+      };
+      onUpdatePatientState(updatedPat);
+    } catch (err: any) {
+      setErrorText(err.message);
+    } finally {
+      setIsValidating(false);
+    }
+  };
+  const handleUnvalidateReport = async () => {
+    if (currentUser?.role !== 'medico') {
+      setErrorText('Accesso non autorizzato (403): Solo personale medico strutturato può riaprire un referto validato.');
+      return;
+    }
+
+    setIsValidating(true);
+    setErrorText(null);
+    try {
+      await apiUnvalidateReport(patient.patient_id);
+      const updatedPat = {
+        ...patient,
+        validated: false,
+        validated_by: null
       };
       onUpdatePatientState(updatedPat);
     } catch (err: any) {
@@ -302,6 +326,7 @@ export default function PatientDetail({
 
         <div className="lg:col-span-7 space-y-4" id="right-column-workflow">
           <FindingsPanel
+            patient={patient}
             findings={findings}
             isClassifying={isClassifying}
             onExecute={handleExecuteClassification}
@@ -327,6 +352,7 @@ export default function PatientDetail({
             onSaveDraftChanges={handleSaveDraftChanges}
             onExportTextFile={handleExportTextFile}
             onValidateReport={handleValidateReport}
+            onUnvalidateReport={handleUnvalidateReport}
           />
         </div>
       </div>
