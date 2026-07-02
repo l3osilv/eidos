@@ -1,9 +1,71 @@
 <mxfile host="Electron" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/28.2.5 Chrome/138.0.7204.251 Electron/37.6.1 Safari/537.36" version="28.2.5">
   <diagram name="Page-1" id="6rjV6d5M9WSBJCPq3i-a">
-    <mxGraphModel dx="706" dy="632" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="1000" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
+        
+        <!-- Start State -->
+        <mxCell id="2" value="" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#0f172a;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="40" y="120" width="20" height="20" as="geometry" />
+        </mxCell>
+        
+        <!-- State: Caricato -->
+        <mxCell id="3" value="Caricato&lt;br&gt;&lt;span style=&quot;font-size: 10px; font-weight: normal; color: #64748b;&quot;&gt;(US-2.1)&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8fafc;strokeColor=#cbd5e1;strokeWidth=2;fontStyle=1;fontColor=#0f172a;" vertex="1" parent="1">
+          <mxGeometry x="100" y="100" width="120" height="60" as="geometry" />
+        </mxCell>
+        
+        <!-- State: Classificato -->
+        <mxCell id="4" value="Classificato&lt;br&gt;&lt;span style=&quot;font-size: 10px; font-weight: normal; color: #a21caf;&quot;&gt;(US-3.1)&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fdf4ff;strokeColor=#e9d5ff;strokeWidth=2;fontStyle=1;fontColor=#7e22ce;" vertex="1" parent="1">
+          <mxGeometry x="280" y="100" width="120" height="60" as="geometry" />
+        </mxCell>
+        
+        <!-- State: Refertato -->
+        <mxCell id="5" value="Refertato&lt;br&gt;&lt;span style=&quot;font-size: 10px; font-weight: normal; color: #0284c7;&quot;&gt;(US-4.1)&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0f9ff;strokeColor=#bae6fd;strokeWidth=2;fontStyle=1;fontColor=#0284c7;" vertex="1" parent="1">
+          <mxGeometry x="460" y="100" width="120" height="60" as="geometry" />
+        </mxCell>
+        
+        <!-- State: Validato -->
+        <mxCell id="6" value="Validato&lt;br&gt;&lt;span style=&quot;font-size: 10px; font-weight: normal; color: #047857;&quot;&gt;(US-5.1)&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ecfdf5;strokeColor=#a7f3d0;strokeWidth=2;fontStyle=1;fontColor=#047857;" vertex="1" parent="1">
+          <mxGeometry x="640" y="100" width="120" height="60" as="geometry" />
+        </mxCell>
+        
+        <!-- End State -->
+        <mxCell id="7" value="" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=none;strokeColor=#0f172a;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="800" y="120" width="20" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="8" value="" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#0f172a;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="805" y="125" width="10" height="10" as="geometry" />
+        </mxCell>
+        
+        <!-- Transitions -->
+        <mxCell id="9" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#475569;strokeWidth=1.5;" edge="1" parent="1" source="2" target="3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="10" value="Inferenza" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#475569;strokeWidth=1.5;labelBackgroundColor=#ffffff;fontSize=10;fontColor=#475569;" edge="1" parent="1" source="3" target="4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="11" value="Bozza" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#475569;strokeWidth=1.5;labelBackgroundColor=#ffffff;fontSize=10;fontColor=#475569;" edge="1" parent="1" source="4" target="5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="12" value="Firma" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#059669;strokeWidth=1.5;labelBackgroundColor=#ffffff;fontSize=10;fontColor=#047857;fontStyle=1" edge="1" parent="1" source="5" target="6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="13" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#475569;strokeWidth=1.5;" edge="1" parent="1" source="6" target="7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- Back Transition: Unvalidate -->
+        <mxCell id="14" value="Ripristina Bozza" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#ea580c;strokeWidth=1.5;labelBackgroundColor=#ffffff;fontSize=10;fontColor=#ea580c;fontStyle=2;curved=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="6" target="5">
+          <mxGeometry relative="1" as="geometry">
+           <!-- <Array points="700, 190", "520, 190" /> -->
+          </mxGeometry>
+        </mxCell>
+        
       </root>
     </mxGraphModel>
   </diagram>

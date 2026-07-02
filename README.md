@@ -1,28 +1,31 @@
 # MedicinAI — BrainCT
 
-Sistema di supporto alla refertazione neuroradiologica sviluppato come progetto di tesi triennale in Informatica presso l'Università di Trento.
+Questo repository contiene il codice di **MedicinAI-BrainCT**, un sistema di supporto alla refertazione neuroradiologica che ho sviluppato come progetto per la mia tesi triennale in Informatica presso l'Università di Trento.
 
-**Autore:** Leonardo Silvestri   
----
-
-## Descrizione
-
-Applicazione web clinica che assiste medici radiologi e specializzandi nell'analisi di esami TC encefalo. Il sistema integra:
-
-- **Modello I** — classificazione automatica di 5 classi patologiche (Blood, Ischemia, Chronic Ischemia, Edema, Mass) tramite DenseNet-121 con pretraining SimCLR ([repo SSL-BrainCT-Pathology](https://github.com/meridtesfay/SSL-BrainCT-Pathology))
-- **Modello II** — generazione rule-based di una bozza di referto testuale strutturato a partire dai findings del Modello I
-- **Frontend** — interfaccia web React/TypeScript con visualizzatore PACS, pannello findings e editor di refertazione
+**Autore:** Leonardo Silvestri  
 
 ---
 
-## Avvio rapido
+## Di cosa si tratta
+
+Il progetto consiste in un'applicazione web pensata per assistere i medici radiologi e gli specializzandi durante l'analisi delle TC all'encefalo. Il sistema si compone di tre parti principali:
+
+- **Modello I (Classificazione):** Un modello basato su DenseNet-121 con pre-addestramento SimCLR (adattato dalla repository [SSL-BrainCT-Pathology](https://github.com/meridtesfay/SSL-BrainCT-Pathology)) che analizza 8 slice della TC e stima la probabilità di presenza per 4 patologie: Blood (sanguinamento/emorragia), Ischemia (infarto cerebrale acuto), Edema (accumulo di liquidi) e Mass (effetto massa).
+- **Modello II (Generatore di referti):** Un modulo rule-based scritto da me che prende i risultati del Modello I e genera in automatico una bozza di referto testuale strutturata.
+- **Interfaccia Web (Frontend):** Una UI realizzata in React e TypeScript che include un visualizzatore stile PACS per scorrere le slice della TC, un pannello con le probabilità stimate dall'IA e un editor per correggere e validare il referto.
+
+---
+
+## Come avviarlo velocemente
 
 ### Prerequisiti
-- Python 3.11+
-- Node.js 18+
-- MongoDB (Docker o nativo — vedi [`docs/setup_mongodb.md`](docs/setup_mongodb.md))
+Prima di partire, verifica di avere installato:
+- Python 3.11 o superiore
+- Node.js 18 o superiore
+- MongoDB attivo (se preferisci usare Docker, trovi la guida in [`backend/mongodb_setup/setup_mongodb.md`](backend/mongodb_setup/setup_mongodb.md))
 
-### Backend
+### Avvio del Backend
+Spostati nella cartella del backend, crea l'ambiente virtuale, installa le dipendenze e lancia il server FastAPI con Uvicorn:
 
 ```bash
 cd backend
@@ -30,48 +33,27 @@ python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt  
 uvicorn main:app --reload --port 8000
 ```
+Una volta avviato, puoi consultare la documentazione delle API (Swagger) su: `http://localhost:8000/docs`
 
-Documentazione API interattiva: `http://localhost:8000/docs`
-
-### Frontend
+### Avvio del Frontend
+In un altro terminale, spostati nella cartella del frontend, installa i pacchetti npm e lancia il server di sviluppo Vite:
 
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
-
-Apri `http://localhost:5173` nel browser.
-
----
-
-## Documentazione
-
-| File | Contenuto |
-|---|---|
-| [`docs/architettura_e_requisiti.md`](docs/architettura_e_requisiti.md) | User stories, flussi end-to-end, decisioni architetturali, tracciabilità RF |
-| [`docs/guida_tecnica_backend.md`](docs/guida_tecnica_backend.md) | Stack tecnologico, integrazione Modello I/II, endpoint API, checklist pre-consegna |
-| [`docs/setup_mongodb.md`](docs/setup_mongodb.md) | Setup MongoDB (Docker e nativo), configurazione `.env`, inizializzazione DB |
-| [`spiegazione_SSL_BrainCT_Pathology.md`](spiegazione_SSL_BrainCT_Pathology.md) | Metodologia SSL del progetto di ricerca di riferimento (Stage 1 e Stage 2) |
+Ora puoi aprire l'applicazione nel browser all'indirizzo `http://localhost:5173`.
 
 ---
 
 ## Struttura del progetto
 
+Ecco come ho organizzato i file principali del progetto:
+
 ```
 medicinAI-brainCT/
-├── backend/
-│   ├── main.py          # app FastAPI, tutti gli endpoint
-│   ├── auth.py          # JWT, hashing, controllo ruoli
-│   ├── database.py      # connessione MongoDB (motor async)
-│   ├── schemas.py       # modelli Pydantic
-│   ├── storage.py       # lettura/scrittura immagini su disco
-│   ├── model_I.py       # classificazione (DenseNet-121 + SimCLR)
-│   └── model_II.py      # generazione referto (rule-based)
-├── frontend/
-│   └── src/
-│       ├── pages/       # Dashboard, PatientDetail, NewPatient, Profile
-│       └── components/  # PacsViewer, FindingsPanel, ReportEditor, ...
-├── docs/                # documentazione tecnica
-└── mongodb_setup/       # docker-compose.yml e .env.example
+├── backend/    # python
+├── frontend/   # react vite 
+└── docs/                
 ```

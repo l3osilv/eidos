@@ -1,34 +1,38 @@
-# Setup MongoDB
+# Guida al Setup di MongoDB
+
+Per far funzionare il database MongoDB per questo progetto ci sono due strade principali. 
+
+---
 
 ## 1. Opzione consigliata: Docker
 
-Evita conflitti di versione con eventuali installazioni native e semplifica la documentazione dell'ambiente nella tesi ("sistema containerizzato, riproducibile").
+Questa è la soluzione che consiglio perché evita conflitti di versione con eventuali altre installazioni di database sul computer e semplifica il setup, rendendo l'ambiente riproducibile (un aspetto utile anche da descrivere nella tesi).
 
-**Prerequisito:** Docker installato (`docker --version`; su Ubuntu: `sudo apt install docker.io docker-compose-v2`).
+**Prerequisiti:** Docker e Docker Compose installati sul computer.
 
+Spostati nella cartella in cui si trova il file `docker-compose.yml` e avvia il servizio in background:
 ```bash
-cd mongodb_setup   # contiene il docker-compose.yml
+cd mongodb_setup
 docker compose up -d
 ```
 
-Verifica che sia partito:
-
+Puoi verificare che il container sia effettivamente partito con:
 ```bash
 docker ps
 ```
+Dovresti vedere nell'elenco un container chiamato `medicinai_mongo` con lo stato `Up`.
 
-Dovresti vedere un container `medicinai_mongo` in stato `Up`.
-
-Comandi utili:
-
+### Comandi utili per Docker:
 ```bash
-docker compose down          # ferma il container (i dati restano nel volume)
-docker compose down -v       # ferma E cancella tutti i dati (utile per ripartire da zero)
+# Per fermare il database
+docker compose down
 ```
 
 ---
 
-## 2. Alternativa: installazione nativa su Ubuntu/Debian
+## 2. Alternativa: Installazione nativa su Ubuntu/Debian
+
+Se preferisci installare MongoDB direttamente sul sistema senza usare Docker, puoi seguire questi passaggi:
 
 ```bash
 sudo apt-get install gnupg curl
@@ -38,71 +42,39 @@ echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gp
   https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" \
   | sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
 sudo apt-get update && sudo apt-get install -y mongodb-org
+
 sudo systemctl start mongod
-sudo systemctl enable mongod   # avvio automatico al boot
+sudo systemctl enable mongod
 ```
 
-Verifica:
-
+Puoi verificare lo stato del servizio con:
 ```bash
 sudo systemctl status mongod
 ```
 
-> Per distribuzioni non Debian-based consultare la [documentazione ufficiale MongoDB](https://www.mongodb.com/docs/manual/installation/).
+*Nota:* Se utilizzi una distribuzione Linux diversa o un altro sistema operativo, fai riferimento alla [documentazione ufficiale di MongoDB](https://www.mongodb.com/docs/manual/installation/).
 
 ---
 
 ## 3. Configurazione del backend
 
-Copia il file `.env.example` nella cartella `backend/` e rinominalo `.env`:
+Una volta che MongoDB è attivo, occorre configurare il backend per farlo connettere al database. 
 
+Spostati nella cartella del backend, copia il file delle impostazioni di esempio e rinominalo in `.env`:
 ```bash
 cd backend
 cp ../mongodb_setup/.env.example .env
 ```
 
-Genera un JWT secret sicuro e inseriscilo nel file `.env`:
-
+Successivamente, genera una chiave segreta casuale che verrà usata per firmare i token JWT degli utenti:
 ```bash
 python3 -c "import secrets; print(secrets.token_hex(32))"
 ```
+Copia l'output del comando e incollalo nel file `.env` appena creato, sostituendo la dicitura `CHANGE_ME` della variabile `JWT_SECRET`.
 
-Sostituisci il valore placeholder `CHANGE_ME` con l'output del comando sopra.
-
-Installa le dipendenze (include `python-dotenv` per leggere `.env`):
-
+Infine, ricordati di installare i pacchetti Python necessari (che comprendono anche `python-dotenv` per caricare le configurazioni da questo file):
 ```bash
 pip install -r requirements.txt
-```
-
----
-
-## 4. Strumenti di ispezione (opzionali)
-
-**mongosh** — shell testuale ufficiale:
-
-```bash
-mongosh mongodb://localhost:27017/medicinai
-> db.users.find()
-> db.patients.find()
-```
-
-**MongoDB Compass** — interfaccia grafica. Scaricabile da [mongodb.com/products/compass](https://www.mongodb.com/products/compass). Connessione: `mongodb://localhost:27017`. Utile per verificare visivamente i dati durante lo sviluppo.
-
----
-
-## 5. Backup dei dati di demo (opzionale)
-
-Per conservare uno snapshot dei dati prima della presentazione:
-
-```bash
-mongodump --uri="mongodb://localhost:27017/medicinai" --out=./backup_demo
-```
-
-Ripristino:
-
-```bash
-mongorestore --uri="mongodb://localhost:27017/medicinai" ./backup_demo/medicinai
 ```
 
 ---

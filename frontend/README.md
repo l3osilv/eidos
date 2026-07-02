@@ -1,101 +1,106 @@
-# MedicinAI - Frontend Clinico (NeuroReport)
+# MedicinAI — Frontend
 
-Questo modulo contiene l'interfaccia utente web-based (Single Page Application) del progetto **MedicinAI BrainCT**. 
-Il frontend simula una workstation clinica radiologica moderna, integrando un visualizzatore PACS per le scansioni assiali, una dashboard per il registro pazienti e un editor avanzato per la stesura assistita dei referti neuroradiologici.
+Questa cartella contiene il codice del frontend di **MedicinAI-BrainCT** (che ho chiamato **NeuroReport**). Si tratta di una Single Page Application (SPA) realizzata per simulare l'interfaccia di una workstation radiologica per l'analisi delle TC all'encefalo.
 
-## Stack Tecnologico
-
-Il progetto è stato sviluppato con tecnologie moderne, ottimizzato per garantire reattività, sicurezza dei dati (tipizzazione) e pulizia architetturale:
-
-* **Core**: React 19 + TypeScript.
-* **Build System**: Vite (per un HMR ultra-veloce e bundle ottimizzati).
-* **Styling**: Tailwind CSS v4 (design system clinico minimale e accessibile).
-* **Iconografia**: Lucide-React per un set di icone chiare e professionali.
-* **Routing**: Sistema di routing minimale custom per SPA senza dipendenze esterne pesanti.
+L'applicazione permette ai medici e agli specializzandi di visualizzare lo storico dei pazienti, caricare nuovi esami, scorrere le slice delle immagini, visualizzare le predizioni dell'IA ed editare/validare il referto generato in automatico.
 
 ---
 
-## Architettura e Clean Code
+## Tecnologie utilizzate
 
-Il codice è stato sottoposto a una profonda revisione "Senior-level" focalizzata su efficienza e manutenibilità:
+Ho scelto di sviluppare l'interfaccia utilizzando queste tecnologie:
 
-1. **Gestione del Network (Zero Boilerplate)**:
-   Le chiamate API in `api.ts` sono incapsulate in un helper asincrono `authFetch()`. Questa astrazione gestisce in automatico l'invio del token JWT e l'intercettazione degli errori (es. *401 Unauthorized*, *403 Forbidden*), riducendo ogni endpoint API a un pulito *one-liner*.
-
-2. **Parallelizzazione I/O**:
-   I componenti che richiedono asset pesanti (es. `PacsViewer.tsx`) sfruttano il mapping parallelo (`Promise.all`) per caricare simultaneamente la filmstrip delle slice, abbattendo drasticamente i tempi di rendering iniziale rispetto al caricamento sequenziale.
-
-3. **Memory Optimization**:
-   Eliminato l'anti-pattern che ricrea costanti e stili di mappa ad ogni re-render. Gli stili condizionali (come i badge dei _Findings_) sono statici a livello di modulo JavaScript per conservare cicli di garbage collection preziosi durante la navigazione della UI.
-
-4. **Zero Dead Code**:
-   Le dipendenze NPM sono strettamente ridotte a quelle necessarie per il build (rimossi pacchetti pesanti di animazione, mock server o utility ridondanti). Le prop di configurazione React e gli strati di context superflui sono stati rimossi a favore di una gestione dello stato lineare e controllata.
+- **Core**: React 19 e TypeScript (per avere un codice tipizzato e ridurre gli errori a runtime).
+- **Build System**: Vite (per un caricamento ultra-veloce in fase di sviluppo e per creare pacchetti ottimizzati per la produzione).
+- **Styling**: Tailwind CSS v4 (per realizzare una UI pulita, minimale e in stile clinico).
+- **Icone**: Lucide-React.
+- **Routing**: Un piccolo sistema di routing interno personalizzato, scritto da me per non appesantire il caricamento con librerie esterne.
 
 ---
 
-## Struttura della Directory
+## Come ho organizzato il codice e ottimizzazioni
 
-```text
+Durante lo sviluppo ho cercato di strutturare il codice in modo ordinato ed efficiente, implementando alcune ottimizzazioni per migliorare l'esperienza d'uso:
+
+1. **Richieste API semplificate (`authFetch`):**
+   Invece di dover includere manualmente i token JWT in ogni richiesta HTTP ed implementare la gestione degli errori per ogni chiamata, in `api.ts` ho creato una funzione helper chiamata `authFetch()`. Questa funzione si occupa in automatico di aggiungere l'header di autorizzazione e intercettare gli errori di sessione scaduta (401) o permessi insufficienti (403).
+
+2. **Caricamento parallelo delle slice (`Promise.all`):**
+   All'interno del visualizzatore (`PacsViewer.tsx`), per evitare che le 8 immagini della TC vengano caricate una alla volta in modo sequenziale rallentando la pagina, ho usato `Promise.all` per effettuare le richieste parallele e caricare l'intero esame molto più velocemente.
+
+3. **Ottimizzazione della memoria:**
+   Ho rimosso la logica che ricreava inutilmente oggetti e stili condizionali (come i colori dei badge per lo stato del paziente) ad ogni render di React, posizionandoli come costanti a livello di modulo. Questo rende la navigazione della UI più reattiva e alleggerisce il lavoro del browser.
+
+4. **Rimozione del codice inutilizzato:**
+   Ho tenuto il file `package.json` pulito, rimuovendo tutte le librerie esterne non necessarie (es. pacchetti pesanti di animazione) a favore di componenti React leggeri e scritti direttamente.
+
+---
+
+## Struttura delle cartelle
+
+```
 frontend/
 ├── src/
-│   ├── api.ts              # Interfaccia di comunicazione con il Backend FastAPI
-│   ├── types.ts            # Definizioni globali delle interfacce TypeScript (Patient, User, Findings)
-│   ├── App.tsx             # Root Component e Auth Guard
-│   ├── router.tsx          # Motore di navigazione interno lightweight
-│   ├── index.css           # Token Tailwind e stili globali (es. scrollbar clinica)
-│   ├── main.tsx            # Entry point React
+│   ├── api.ts              # Funzioni per dialogare con il backend FastAPI
+│   ├── types.ts            # Tipi e interfacce TypeScript (Patient, User, Findings)
+│   ├── App.tsx             # Componente radice dell'app e gestione delle rotte protette
+│   ├── router.tsx          # Gestore per la navigazione all'interno dell'app
+│   ├── index.css           # Configurazione di Tailwind e stili globali
+│   ├── main.tsx            # Punto di ingresso di React
 │   │
-│   ├── components/         # Componenti riutilizzabili dell'UI
-│   │   ├── Header.tsx           # Barra di navigazione utente e logout
-│   │   ├── LoadingNotice.tsx    # Animazione di scansione e waiting state
-│   │   ├── PacsViewer.tsx       # Simulatore di navigazione assiale immagini TC
-│   │   ├── FindingsPanel.tsx    # Risultati del Modello I (barre di confidenza)
-│   │   ├── ReportEditor.tsx     # Area di stesura del referto Modello II con export
-│   │   ├── CoherenceAlert.tsx   # Badge di avviso disallineamento testo/reperti
-│   │   └── LoginForm.tsx        # Schermata unificata login/registrazione personale
+│   ├── components/         # Componenti dell'interfaccia utente
+│   │   ├── Header.tsx           # Barra superiore con il menu e logout
+│   │   ├── LoadingNotice.tsx    # Schermata di caricamento per l'inferenza dell'IA
+│   │   ├── PacsViewer.tsx       # Componente per scorrere le 8 slice TC
+│   │   ├── FindingsPanel.tsx    # Schermata dei risultati del Modello I (IA)
+│   │   ├── ReportEditor.tsx     # Campo di testo del referto Modello II con tasto di export
+│   │   ├── CoherenceAlert.tsx   # Messaggio che segnala discrepanze testo/reperti
+│   │   └── LoginForm.tsx        # Schermata di login e registrazione utenti
 │   │
-│   └── pages/              # Viste principali (agganciate al router)
-│       ├── Dashboard.tsx        # Registro pazienti (Tabella e Filtri)
-│       ├── PatientDetail.tsx    # Workspace clinico integrato (Visualizzatore + Editor)
-│       ├── NewPatient.tsx       # Form anagrafica + drag&drop 8 slices
-│       ├── Profile.tsx          # Gestione identità e firma digitale medico
-│       ├── Login.tsx            # Wrapper Page Login
-│       └── Register.tsx         # Wrapper Page Registrazione
+│   └── pages/              # Schermate principali dell'applicazione
+│       ├── Dashboard.tsx        # Lista dei pazienti inseriti con i filtri
+│       ├── PatientDetail.tsx    # Schermata di lavoro (Visualizzatore + Editor referti)
+│       ├── NewPatient.tsx       # Modulo per inserire un nuovo paziente e caricare le 8 immagini
+│       ├── Profile.tsx          # Gestione dei dati del medico e della firma
+│       ├── Login.tsx            # Schermata di accesso
+│       └── Register.tsx         # Schermata di registrazione
 ```
 
 ---
 
-## Funzionalità Cliniche Principali
+## Funzionalità principali
 
-* **Accesso Riservato Role-based**: Differenziazione UI in base alla qualifica (*Medico Strutturato* vs *Specializzando*). Solo lo Strutturato ha le permission di validare (apporre firma digitale) il referto finale.
-* **Registro Pazienti (Dashboard)**: Sistema di filtraggio rapido e tracking visivo per capire a colpo d'occhio quali pazienti devono essere ancora elaborati dall'AI e quali sono refertati/validati.
-* **Visualizzatore "RIS/PACS" (PacsViewer)**: Interfaccia dedicata alla navigazione slice-by-slice di un esame TC Assiale, con pre-fetching parallelo e filmstrip dedicata per una review rapida e precisa.
-* **Findings Assestment & Coerenza**: Visualizzazione dei risultati del modello computazionale sui tessuti patologici (Modello I), calcolati come percentuali di probabilità rispetto alle soglie cliniche decisionali.
-* **Workflow Refertazione LaTeX-style (ReportEditor)**: Generazione di una bozza di testo standardizzata (Modello II) che può essere modificata a mano e costantemente controllata in tempo reale dal check di *Coerenza Semantica* (evidenzia discrepanze tra reperti AI e testo inserito dal medico).
-* **Export PDF/TXT**: Funzionalità di scaricamento immediato del referto validato in file testuale piatto, adatto all'incollaggio su sistemi legacy ospedalieri.
+- **Accesso protetto e gestione ruoli:** L'interfaccia si adatta a seconda del ruolo dell'utente (*Medico* o *Specializzando*). Solo i medici strutturati hanno abilitato il pulsante per firmare e validare definitivamente un referto.
+- **Dashboard Pazienti:** Tabella che permette di monitorare tutti i casi inseriti nel sistema e di vedere subito il loro stato nel workflow (es. caricato, refertato, validato).
+- **Visualizzatore delle Slice (PacsViewer):** Un modulo che simula i visualizzatori clinici reali, consentendo di scorrere le 8 slice TC utilizzando la tastiera o la filmstrip laterale.
+- **Pannello dei Findings dell'IA:** Mostra a schermo i risultati della classificazione del Modello I, con barre di probabilità colorate a seconda che superino o meno la soglia clinica.
+- **Editor Referti e Controllo Coerenza:** Permette di visualizzare la bozza generata dal Modello II e di modificarla. Se il medico rimuove manualmente una patologia che l'IA ha rilevato come positiva, l'applicazione mostra un avviso visivo di incoerenza.
+- **Esportazione in formato testo:** Permette di esportare il referto finale firmato in un file di testo piatto (.txt) pronto per essere salvato in locale o copiato in altri sistemi ospedalieri.
 
 ---
 
 ## Esecuzione Locale (Sviluppo)
 
-Assicurati che il backend (FastAPI) sia già in esecuzione sulla porta `8000` (`http://localhost:8000`), poiché le chiamate API nel frontend puntano per default a questa route.
+Prima di avviare il frontend, assicurati che il backend di FastAPI sia attivo sulla porta `8000` (`http://localhost:8000`), altrimenti le chiamate API restituiranno errore.
 
 ```bash
-# 1. Spostati nella cartella frontend
+# 1. Spostati nella cartella del frontend
 cd frontend
 
-# 2. Installa le dipendenze
+# 2. Installa le dipendenze npm
 npm install
 
-# 3. Avvia il server di sviluppo (Vite)
+# 3. Avvia il server di sviluppo con Vite
 npm run dev
 ```
 
-Il progetto sarà esposto su `http://localhost:3000`.
+Una volta avviato, apri il browser all'indirizzo `http://localhost:5173`.
 
-## Build (Produzione)
+---
 
-Per generare il bundle statico minimizzato (per deploy su Vercel, Netlify, o Nginx):
+## Build per la Produzione
+
+Se vuoi generare il pacchetto statico ottimizzato e minimizzato da caricare su un server web (es. Nginx):
 
 ```bash
 npm run build
