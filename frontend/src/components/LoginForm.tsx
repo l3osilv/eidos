@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Lock, User as UserIcon, ShieldAlert, Activity, ShieldCheck } from 'lucide-react';
+import { Lock, User as UserIcon, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { apiLogin, apiRegister, setTokenMemory, setCurrentUser } from '../api';
 import { Role, User } from '../types';
 import { navigate } from '../router';
+import eidosLogo from '../assets/eidos.svg';
 
 interface LoginFormProps {
   onLoginSuccess: (user: User) => void;
@@ -98,9 +99,7 @@ export default function LoginForm({
   return (
     <div className="max-w-md mx-auto my-12" id="clinical-login-screen">
       <div className="text-center mb-6">
-        <div className="bg-blue-900 border border-blue-800 p-3 rounded-lg inline-flex items-center justify-center text-white mb-3 shadow-md">
-          <Activity className="h-8 w-8 animate-pulse" />
-        </div>
+        <img src={eidosLogo} alt="Eidos Logo" className="h-12 w-12 mx-auto mb-3" />
         <h2 className="text-sm font-extrabold text-blue-900 tracking-wider font-mono uppercase">
           Portale NeuroReport Clinico
         </h2>

@@ -1,5 +1,6 @@
-import { Activity, LogOut, User as UserIcon } from 'lucide-react';
+import { LogOut, User as UserIcon } from 'lucide-react';
 import { User } from '../types';
+import eidosLogo from '../assets/eidos.svg';
 
 interface ClinicalHeaderProps {
   currentUser: User | null;
@@ -17,12 +18,10 @@ export default function Header({
       <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between" id="clinical-header-container">
         {/* Titolo applicazione */}
         <div className="flex items-center gap-3">
-          <div className="bg-blue-900 w-8 h-8 rounded-md flex items-center justify-center text-white shadow-sm shrink-0">
-            <Activity className="h-4.5 w-4.5" />
-          </div>
+          <img src={eidosLogo} alt="Eidos Logo" className="w-8 h-8 shrink-0" />
           <div>
             <h1 className="text-sm font-bold text-blue-900 tracking-tight flex items-center gap-2">
-              MedicinAI
+              Eidos
             </h1>
             <p className="text-[9px] text-slate-400 tracking-wider font-semibold uppercase">UniTN-SSL-BrainCT-Pathology</p>
           </div>

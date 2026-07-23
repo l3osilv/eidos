@@ -95,7 +95,7 @@ export default function ReportEditor({
 
               <div className="bg-[#fdfcfb] border border-slate-200 shadow-inner rounded p-8 md:p-12 max-w-3xl mx-auto my-2 relative overflow-hidden select-text border-t-4 border-t-slate-400">
                 <div className="border-b border-slate-200 pb-3 mb-6 text-slate-400 text-[10px] font-mono flex justify-between uppercase tracking-wider">
-                  <span>MEDICINAI REPORTING SYSTEM</span>
+                  <span>EIDOS REPORTING SYSTEM</span>
                   <span>ID PAZIENTE: {patient.patient_id.substring(0, 8)}...</span>
                 </div>
                 

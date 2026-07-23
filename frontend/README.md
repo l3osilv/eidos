@@ -1,6 +1,6 @@
-# MedicinAI — Frontend
+# Eidos — Frontend
 
-Questa cartella contiene il codice del frontend di **MedicinAI-BrainCT** (che ho chiamato **NeuroReport**). Si tratta di una Single Page Application (SPA) realizzata per simulare l'interfaccia di una workstation radiologica per l'analisi delle TC all'encefalo.
+Questa cartella contiene il codice del frontend di **Eidos**. Si tratta di una Single Page Application (SPA) realizzata per simulare l'interfaccia di una workstation radiologica per l'analisi delle TC all'encefalo.
 
 L'applicazione permette ai medici e agli specializzandi di visualizzare lo storico dei pazienti, caricare nuovi esami, scorrere le slice delle immagini, visualizzare le predizioni dell'IA ed editare/validare il referto generato in automatico.
 
