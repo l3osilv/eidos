@@ -1,7 +1,7 @@
 [project]
 name = "backend"
 version = "0.1.0"
-description = "Backend for medicinai thesis project"
+description = "Backend for eidos thesis project"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = []

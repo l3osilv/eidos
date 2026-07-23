@@ -60,7 +60,9 @@ CHECKPOINT_PATHS: Dict[str, str] = {
 def _load_json_config(label: str) -> dict:
     path = CONFIG_JSON_PATHS.get(label)
     if path is None or not os.path.exists(path):
-        logger.warning("Config JSON per %s non trovato in %s. Uso valori di default.", label, path)
+        logger.warning(
+            "Config JSON per %s non trovato in %s. Uso valori di default.", label, path
+        )
         return {}
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
@@ -100,7 +102,9 @@ def _build_cfg(label: str):
 
 def _build_architecture(label: str) -> torch.nn.Module:
     if MultiLabelMILClassifier is None:
-        raise NotImplementedError("Moduli di inferenza non disponibili (check SSL_BRAINCT_SRC)")
+        raise NotImplementedError(
+            "Moduli di inferenza non disponibili (check SSL_BRAINCT_SRC)"
+        )
     cfg = _build_cfg(label)
     return MultiLabelMILClassifier(cfg, ssl_weights=None)
 
@@ -143,7 +147,9 @@ class ClassificationModel:
                 break
 
         if self.preprocessor is None and BrainCTPreprocessor is not None:
-            logger.warning("Nessun JSON di configurazione trovato. Uso preprocessore standard.")
+            logger.warning(
+                "Nessun JSON di configurazione trovato. Uso preprocessore standard."
+            )
             self.preprocessor = BrainCTPreprocessor(
                 use_circle_mask=True,
                 circle_radius=0.45,
@@ -154,7 +160,9 @@ class ClassificationModel:
 
         for label, path in CHECKPOINT_PATHS.items():
             if not os.path.exists(path):
-                logger.warning("Checkpoint per %s non trovato in %s — saltato.", label, path)
+                logger.warning(
+                    "Checkpoint per %s non trovato in %s — saltato.", label, path
+                )
                 continue
 
             try:
@@ -170,7 +178,9 @@ class ClassificationModel:
             except NotImplementedError as e:
                 logger.warning("Classe %s saltata: %s", label, e)
             except Exception:
-                logger.exception("Errore durante il caricamento del checkpoint per: %s", label)
+                logger.exception(
+                    "Errore durante il caricamento del checkpoint per: %s", label
+                )
 
         if not self.models:
             logger.warning("Nessun modello di classificazione caricato correttamente.")

@@ -1,6 +1,6 @@
-# MedicinAI — BrainCT
+# Eidos — Eidos
 
-Questo repository contiene il codice di **MedicinAI-BrainCT**, un sistema di supporto alla refertazione neuroradiologica che ho sviluppato come progetto per la mia tesi triennale in Informatica presso l'Università di Trento.
+Questo repository contiene il codice di **Eidos**, un sistema di supporto alla refertazione neuroradiologica che ho sviluppato come progetto per la mia tesi triennale in Informatica presso l'Università di Trento.
 
 **Autore:** Leonardo Silvestri  
 
@@ -10,7 +10,7 @@ Questo repository contiene il codice di **MedicinAI-BrainCT**, un sistema di sup
 
 Il progetto consiste in un'applicazione web pensata per assistere i medici radiologi e gli specializzandi durante l'analisi delle TC all'encefalo. Il sistema si compone di tre parti principali:
 
-- **Modello I (Classificazione):** Un modello basato su DenseNet-121 con pre-addestramento SimCLR (adattato dalla repository [SSL-BrainCT-Pathology](https://github.com/meridtesfay/SSL-BrainCT-Pathology)) che analizza 8 slice della TC e stima la probabilità di presenza per 4 patologie: Blood (sanguinamento/emorragia), Ischemia (infarto cerebrale acuto), Edema (accumulo di liquidi) e Mass (effetto massa).
+- **Modello I (Classificazione):** Un modello basato su DenseNet-121 con pre-addestramento SimCLR (adattato dalla repository [SSL-Eidos-Pathology](https://github.com/meridtesfay/SSL-Eidos-Pathology)) che analizza 8 slice della TC e stima la probabilità di presenza per 4 patologie: Blood (sanguinamento/emorragia), Ischemia (infarto cerebrale acuto), Edema (accumulo di liquidi) e Mass (effetto massa).
 - **Modello II (Generatore di referti):** Un modulo rule-based scritto da me che prende i risultati del Modello I e genera in automatico una bozza di referto testuale strutturata.
 - **Interfaccia Web (Frontend):** Una UI realizzata in React e TypeScript che include un visualizzatore stile PACS per scorrere le slice della TC, un pannello con le probabilità stimate dall'IA e un editor per correggere e validare il referto.
 

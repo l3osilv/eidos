@@ -1,5 +1,5 @@
 """
-Backend FastAPI — endpoint REST per MedicinAI-BrainCT.
+Backend FastAPI — endpoint REST per Eidos.
 
 Flusso di lavoro diagnostico:
   1. Login/registrazione operatore

@@ -20,28 +20,12 @@ Puoi verificare che il container sia effettivamente partito con:
 ```bash
 docker ps
 ```
-Dovresti vedere nell'elenco un container chiamato `medicinai_mongo` con lo stato `Up`.
+Dovresti vedere nell'elenco un container chiamato `eidos_mongo` con lo stato `Up`.
 
 ### Comandi utili per Docker:
 ```bash
 # Per fermare il database
 docker compose down
-```
-
----
-
-## 2. Alternativa: Installazione nativa su Ubuntu/Debian
-
-Se preferisci installare MongoDB direttamente sul sistema senza usare Docker, puoi seguire questi passaggi:
-
-```bash
-sudo apt-get install gnupg curl
-curl -fsSL https://pgp.mongodb.com/server-7.0.asc \
-  | sudo gpg -o /usr/share/keyrings/mongodb-server-7.0.gpg --dearmor
-echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] \
-  https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" \
-  | sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
-sudo apt-get update && sudo apt-get install -y mongodb-org
 
 sudo systemctl start mongod
 sudo systemctl enable mongod

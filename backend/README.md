@@ -1,6 +1,6 @@
-# MedicinAI-BrainCT — Backend
+# Eidos — Backend
 
-Questo è il codice del backend di **MedicinAI-BrainCT**, un sistema di supporto alla refertazione neuroradiologica che ho sviluppato come progetto per la mia tesi triennale.
+Questo è il codice del backend di **Eidos**, un sistema di supporto alla refertazione neuroradiologica che ho sviluppato come progetto per la mia tesi triennale.
 
 Il server espone le API REST (usando FastAPI) che servono a gestire l'anagrafica dei pazienti, caricare le immagini TC, eseguire la classificazione automatica tramite reti neurali (Modello I) e generare una bozza di referto clinico basata sui risultati (Modello II) .
 
@@ -124,8 +124,8 @@ backend/
 ### 1. Scarica il codice
 
 ```bash
-git clone https://github.com/l3osilv/medicinAI-brainCT.git
-cd medicinAI-brainCT/backend
+git clone https://github.com/l3osilv/eidos.git
+cd eidos/backend
 
 ```
 
@@ -150,7 +150,7 @@ Il backend importa del codice dalla repository di riferimento [SSL-BrainCT-Patho
 
 ```text
 Cartella_Progetti/
-├── medicinAI-brainCT/
+├── eidos/
 │   └── backend/          ← Cartella in cui ti trovi ora
 └── SSL-BrainCT-Pathology/
     └── stage2_2d_slice_level/
@@ -179,7 +179,7 @@ Crea un file `.env` dentro la cartella `backend/` prendendo come base `.env.exam
 | Variabile | Valore di Default | Descrizione |
 | --- | --- | --- |
 | `MONGODB_URL` | `mongodb://localhost:27017` | Indirizzo per connettersi a MongoDB  |
-| `DB_NAME` | `medicinai` | Nome del database  |
+| `DB_NAME` | `eidos` | Nome del database  |
 | `JWT_SECRET` | *(vuoto per sviluppo)* | Chiave per firmare i token JWT  |
 | `SSL_BRAINCT_SRC` | `../../SSL-BrainCT-Pathology/...` | Percorso alla repository esterna del Modello I  |
 | `IMAGES_ROOT` | `storage/images` | Cartella in cui salvare le immagini caricate  |
