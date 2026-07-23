@@ -1,0 +1,12 @@
+# Thesis files
+tesi/
+
+# Python cache & env
+__pycache__/
+*.pyc
+backend/.env
+backend/storage/
+
+# Node dependencies & build
+node_modules/
+dist/
