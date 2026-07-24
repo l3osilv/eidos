@@ -1,6 +1,7 @@
 import React, { useState, useRef, ChangeEvent, DragEvent, FormEvent } from 'react';
-import { ArrowLeft, Upload, FileImage, Trash2, AlertCircle, Check, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Upload, FileImage, Trash2, AlertCircle, Check, CheckCircle, ShieldCheck } from 'lucide-react';
 import { Patient } from '../types';
+import { useLanguage } from '../context/LanguageContext';
 
 interface NewPatientProps {
   onBack: () => void;
@@ -13,6 +14,8 @@ export default function NewPatient({
   onSubmit,
   isSubmitting,
 }: NewPatientProps) {
+  const { t } = useLanguage();
+  const [isAnonymized, setIsAnonymized] = useState(false);
   const [nome, setNome] = useState('');
   const [cognome, setCognome] = useState('');
   const [cf, setCf] = useState('');
@@ -79,28 +82,30 @@ export default function NewPatient({
     e.preventDefault();
     setErrorMessage(null);
 
-    if (!nome.trim() || !cognome.trim() || !cf.trim() || !dataNascita) {
-      setErrorMessage("Tutti i dati anagrafici del paziente sono obbligatori.");
-      return;
-    }
+    if (!isAnonymized) {
+      if (!nome.trim() || !cognome.trim() || !cf.trim() || !dataNascita) {
+        setErrorMessage("Tutti i dati anagrafici del paziente sono obbligatori (oppure attiva l'opzione Anonimizza).");
+        return;
+      }
 
-    if (cf.trim().length !== 16) {
-      setErrorMessage("Errore validazione Codice Fiscale: l'identificativo deve contenere esattamente 16 caratteri alfanumerici.");
-      return;
+      if (cf.trim().length !== 16) {
+        setErrorMessage("Il Codice Fiscale deve contenere esattamente 16 caratteri.");
+        return;
+      }
     }
 
     if (selectedFiles.length !== 8) {
-      setErrorMessage(`Il sistema richiede il caricamento di esattamente 8 slice assiali in formato immagine per procedere. Al momento hai selezionato ${selectedFiles.length} file.`);
+      setErrorMessage(`È necessario selezionare esattamente 8 immagini TC. Attualmente ne hai selezionate ${selectedFiles.length}.`);
       return;
     }
 
     try {
       const formData = new FormData();
-      formData.append('nome', nome.trim());
-      formData.append('cognome', cognome.trim());
-      formData.append('codice_fiscale', cf.toUpperCase().trim());
-      formData.append('data_nascita', dataNascita);
-      formData.append('gender', sesso);
+      formData.append('nome', isAnonymized ? 'ANONIMO' : nome.trim());
+      formData.append('cognome', isAnonymized ? 'ANONIMO' : cognome.trim());
+      formData.append('codice_fiscale', isAnonymized ? 'ANONIMO000000000' : cf.toUpperCase().trim());
+      formData.append('data_nascita', isAnonymized ? (dataNascita || '1900-01-01') : dataNascita);
+      formData.append('gender', sesso || 'M');
 
       const sortedFiles = [...selectedFiles].sort((a, b) =>
         a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
@@ -119,20 +124,20 @@ export default function NewPatient({
     <div className="max-w-3xl mx-auto" id="new-patient-registry-form">
       <button
         onClick={onBack}
-        className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 font-semibold mb-4 transition uppercase font-mono"
+        className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 font-semibold mb-4 transition uppercase font-mono cursor-pointer"
         id="btn-annulla-form"
       >
         <ArrowLeft className="h-4 w-4" />
-        Torna al Registro
+        {t('newPatient.back')}
       </button>
 
       <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
         <div className="p-4 border-b border-slate-100 bg-slate-50/50">
           <h2 className="text-sm font-semibold text-slate-800 tracking-tight font-mono uppercase">
-            Registrazione Esame TC {`&`} Anagrafica Paziente
+            {t('newPatient.title')}
           </h2>
           <p className="text-xs text-slate-500">
-            Inserisci i dati demografici richiesti per la codifica RIS/PACS ed effettua il caricamento di esattamente 8 immagini assiali.
+            {t('newPatient.subtitle')}
           </p>
         </div>
 
@@ -147,78 +152,106 @@ export default function NewPatient({
           )}
 
           <div>
-            <h3 className="text-xs font-semibold text-slate-400 font-mono uppercase tracking-wider mb-3">
-              1. Informazioni Anagrafiche
-            </h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-semibold text-slate-400 font-mono uppercase tracking-wider">
+                {t('newPatient.sec1')}
+              </h3>
+
+              {/* Toggle Anonimizza */}
+              <label className="flex items-center gap-2 cursor-pointer bg-slate-50 hover:bg-slate-100 px-3 py-1 rounded border border-slate-200 transition">
+                <input
+                  type="checkbox"
+                  id="anonymize-toggle"
+                  checked={isAnonymized}
+                  onChange={(e) => setIsAnonymized(e.target.checked)}
+                  className="rounded border-slate-300 text-blue-900 focus:ring-blue-500 h-3.5 w-3.5 cursor-pointer"
+                />
+                <span className="text-xs font-mono font-bold text-slate-700 select-none">
+                  {t('newPatient.anonymize.label')}
+                </span>
+              </label>
+            </div>
+
+            {isAnonymized && (
+              <div className="bg-blue-50/60 border border-blue-200 text-blue-800 p-2.5 rounded text-xs mb-4 flex items-center gap-2 animate-in fade-in">
+                <ShieldCheck className="h-4 w-4 text-blue-700 shrink-0" />
+                <span className="font-mono text-[11px] font-semibold">
+                  {t('newPatient.anonymize.activeBadge')}: {t('newPatient.anonymize.desc')}
+                </span>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-slate-605 mb-1">Nome</label>
+                <label className="block text-xs font-medium text-slate-600 mb-1">{t('newPatient.name')}</label>
                 <input
                   type="text"
-                  required
-                  value={nome}
+                  required={!isAnonymized}
+                  disabled={isAnonymized}
+                  value={isAnonymized ? 'ANONIMO' : nome}
                   onChange={(e) => setNome(e.target.value)}
                   placeholder="E.g. Lorenzo"
-                  className="w-full border border-slate-200 rounded px-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full border border-slate-200 rounded px-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed"
                   id="patient-name-input"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Cognome</label>
+                <label className="block text-xs font-medium text-slate-600 mb-1">{t('newPatient.surname')}</label>
                 <input
                   type="text"
-                  required
-                  value={cognome}
+                  required={!isAnonymized}
+                  disabled={isAnonymized}
+                  value={isAnonymized ? 'ANONIMO' : cognome}
                   onChange={(e) => setCognome(e.target.value)}
                   placeholder="E.g. Martini"
-                  className="w-full border border-slate-200 rounded px-3 py-1.5 text-xs text-slate-805 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full border border-slate-200 rounded px-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed"
                   id="patient-surname-input"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1 flex items-center justify-between">
-                  <span>Codice Fiscale</span>
+                  <span>{t('newPatient.fiscalCode')}</span>
                   <span className="text-[10px] text-slate-400 font-mono">16 caratteri</span>
                 </label>
                 <input
                   type="text"
-                  required
+                  required={!isAnonymized}
+                  disabled={isAnonymized}
                   maxLength={16}
-                  value={cf}
+                  value={isAnonymized ? 'ANONIMO000000000' : cf}
                   onChange={(e) => setCf(e.target.value)}
                   placeholder="MRTLNZ55M12L219H"
-                  className="w-full border border-slate-200 rounded px-3 py-1.5 text-xs font-mono tracking-wider text-slate-800 placeholder-slate-404 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 uppercase"
+                  className="w-full border border-slate-200 rounded px-3 py-1.5 text-xs font-mono tracking-wider text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 uppercase disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed"
                   id="patient-cf-input"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Data di Nascita</label>
+                <label className="block text-xs font-medium text-slate-600 mb-1">{t('newPatient.birthdate')}</label>
                 <input
                   type="date"
-                  required
-                  value={dataNascita}
+                  required={!isAnonymized}
+                  disabled={isAnonymized}
+                  value={isAnonymized ? '' : dataNascita}
                   onChange={(e) => setDataNascita(e.target.value)}
-                  className="w-full border border-slate-200 rounded px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full border border-slate-200 rounded px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed"
                   id="patient-birthdate-input"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Sesso</label>
+                <label className="block text-xs font-medium text-slate-600 mb-1">{t('newPatient.gender')}</label>
                 <select
-                  required
                   value={sesso}
                   onChange={(e) => setSesso(e.target.value)}
                   className="w-full border border-slate-200 rounded px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   id="patient-gender-input"
                 >
-                  <option value="">Seleziona sesso</option>
-                  <option value="M">Uomo</option>
-                  <option value="F">Donna</option>
+                  <option value="">{t('newPatient.gender.select')}</option>
+                  <option value="M">{t('newPatient.gender.male')}</option>
+                  <option value="F">{t('newPatient.gender.female')}</option>
                 </select>
               </div>
             </div>
@@ -226,12 +259,12 @@ export default function NewPatient({
 
           <div className="border-t border-slate-100 pt-6">
             <h3 className="text-xs font-semibold text-slate-400 font-mono uppercase tracking-wider mb-3 flex items-center justify-between">
-              <span>2. Caricamento Serie Immagini (Pacchetto Esame)</span>
+              <span>{t('newPatient.sec2')}</span>
             </h3>
 
             <div className={`mb-4 p-2.5 rounded text-xs flex items-center justify-between font-mono ${selectedFiles.length === 8
                 ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                : 'bg-slate-50 text-slate-505 border border-slate-200'
+                : 'bg-slate-50 text-slate-600 border border-slate-200'
               }`} id="slice-counter-gauge font-mono">
               <div className="flex items-center gap-2">
                 {selectedFiles.length === 8 ? (
@@ -239,10 +272,10 @@ export default function NewPatient({
                 ) : (
                   <AlertCircle className="h-4.5 w-4.5 text-slate-400" />
                 )}
-                <span>STATO CARICAMENTO SLICES:</span>
+                <span>{t('newPatient.sliceGauge')}</span>
               </div>
               <div className="font-semibold">
-                {selectedFiles.length} / 8 IMMAGINI TC
+                {selectedFiles.length} / 8 {t('newPatient.slicesOf8')}
               </div>
             </div>
 
@@ -269,21 +302,21 @@ export default function NewPatient({
               />
               <Upload className="h-7 w-7 text-slate-400" />
               <div>
-                <p className="text-xs font-semibold text-slate-707">Trascina qui le 8 immagini della TC, oppure clicca per selezionarle</p>
-                <p className="text-[10px] text-slate-400 mt-1">PNG o JPG • Esattamente 8 immagini per paziente</p>
+                <p className="text-xs font-semibold text-slate-700">{t('newPatient.dropInstructions')}</p>
+                <p className="text-[10px] text-slate-400 mt-1">{t('newPatient.dropFormat')}</p>
               </div>
             </div>
 
             {selectedFiles.length > 0 && (
               <div className="mt-4 bg-slate-50 border border-slate-150 rounded" id="uploaded-files-list-panel">
                 <div className="p-2 border-b border-slate-150 text-[10px] font-mono text-slate-550 flex justify-between items-center bg-slate-100">
-                  <span>FILE SELEZIONATI:</span>
+                  <span>{t('newPatient.selectedFiles')}</span>
                   <button
                     type="button"
                     onClick={clearAllFiles}
-                    className="text-red-600 hover:text-red-700 hover:underline flex items-center gap-1 font-semibold"
+                    className="text-red-600 hover:text-red-700 hover:underline flex items-center gap-1 font-semibold cursor-pointer"
                   >
-                    <Trash2 className="h-3 w-3" /> Svuota lista
+                    <Trash2 className="h-3 w-3" /> {t('newPatient.clearList')}
                   </button>
                 </div>
 
@@ -298,7 +331,7 @@ export default function NewPatient({
                       <button
                         type="button"
                         onClick={() => removeFile(idx)}
-                        className="p-1 hover:bg-red-50 text-red-500 rounded transition"
+                        className="p-1 hover:bg-red-50 text-red-500 rounded transition cursor-pointer"
                         title="Rimuovi questo file"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -315,27 +348,27 @@ export default function NewPatient({
               type="button"
               onClick={onBack}
               disabled={isSubmitting}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 transition disabled:opacity-50"
+              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 transition disabled:opacity-50 cursor-pointer"
               id="form-btn-annulla"
             >
-              ANNULLA
+              {t('newPatient.cancel')}
             </button>
 
             <button
               type="submit"
               disabled={isSubmitting}
-              className="bg-blue-900 hover:bg-blue-950 text-white text-xs font-bold px-5 py-2 rounded flex items-center gap-1.5 transition disabled:opacity-50 font-mono tracking-wide shadow-sm"
+              className="bg-blue-900 hover:bg-blue-950 text-white text-xs font-bold px-5 py-2 rounded flex items-center gap-1.5 transition disabled:opacity-50 font-mono tracking-wide shadow-sm cursor-pointer"
               id="form-btn-submit"
             >
               {isSubmitting ? (
                 <>
                   <span className="animate-spin h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full mr-1"></span>
-                  CARICAMENTO IN CORSO...
+                  {t('newPatient.submitting')}
                 </>
               ) : (
                 <>
                   <Check className="h-4 w-4" />
-                  REGISTRA E SALVA
+                  {t('newPatient.submit')}
                 </>
               )}
             </button>
