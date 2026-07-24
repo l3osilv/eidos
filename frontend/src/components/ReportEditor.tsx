@@ -1,5 +1,8 @@
+import { useState } from 'react';
 import { FileText, FileSpreadsheet, Save, Download, ShieldAlert, CheckCircle2, Lock, CheckCheck, RefreshCw } from 'lucide-react';
 import { Patient, User } from '../types';
+import { useLanguage } from '../context/LanguageContext';
+import ExportModal from './ExportModal';
 
 interface ReportEditorProps {
   patient: Patient;
@@ -32,17 +35,28 @@ export default function ReportEditor({
   onValidateReport,
   onUnvalidateReport,
 }: ReportEditorProps) {
+  const { t } = useLanguage();
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+
   return (
     <div className="space-y-4">
+      <ExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        patient={patient}
+        reportText={reportText}
+        disclaimer={disclaimer}
+      />
+
       <section className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm space-y-3.5" id="clinical-reporting-editor">
         <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
           <h3 className="text-xs font-bold text-slate-400 font-mono uppercase tracking-wider flex items-center gap-1.5">
             <FileText className="h-4.5 w-4.5 text-slate-600" />
-            STESURA E REVISIONE CLINICA DEL REFERTO
+            {t('report.title')}
           </h3>
-          
+
           <span id="save-alert-badge" className="text-emerald-700 bg-emerald-50 text-[10px] border border-emerald-250 font-bold font-mono py-0.5 px-2 rounded opacity-0 transition-opacity duration-300">
-            SALVATO NEL SISTEMA
+            {t('report.savedBadge')}
           </span>
         </div>
 
@@ -50,11 +64,11 @@ export default function ReportEditor({
           <div className="bg-slate-50 border border-slate-100 rounded-lg p-8 text-center flex flex-col items-center justify-center gap-3">
             <FileSpreadsheet className="h-10 w-10 text-slate-350" />
             <div>
-              <p className="text-xs font-semibold text-slate-700">Testo del referto non ancora preparato</p>
+              <p className="text-xs font-semibold text-slate-700">{t('report.emptyTitle')}</p>
               <p className="text-[11px] text-slate-500 mt-1 font-sans">
-                {!patient.has_classification 
-                  ? "Disabilitato: è necessario eseguire prima la valutazione preliminare dei reperti per abilitare la stesura strutturata."
-                  : "La valutazione dei reperti è stata completata con successo. Clicca sotto per preparare la bozza di referto strutturata secondo il protocollo clinico."}
+                {!patient.has_classification
+                  ? t('report.emptyDescNoClass')
+                  : t('report.emptyDescReady')}
               </p>
             </div>
 
@@ -68,16 +82,16 @@ export default function ReportEditor({
                 {isGeneratingReport ? (
                   <>
                     <span className="animate-spin h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full mr-1"></span>
-                    ELABORAZIONE BOZZA...
+                    {t('report.btnGenerating')}
                   </>
                 ) : (
                   <>
                     <FileText className="h-3.5 w-3.5" />
-                    PREPARA BOZZA REFERTO CLINICO
+                    {t('report.btnGenerate')}
                   </>
                 )}
               </button>
-              
+
               {!patient.has_classification && (
                 <div className="absolute top-10 left-1/2 -translate-x-1/2 bg-slate-950 text-white text-[10px] py-1 px-2.5 rounded shadow-xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-150 pointer-events-none border border-slate-800" id="generate-tooltip-warn">
                   Prerequisito: Esegui prima la valutazione dei reperti
@@ -89,8 +103,8 @@ export default function ReportEditor({
           <div className="space-y-3" id="draft-editor-active">
             <div className="space-y-1">
               <label className="block text-[10px] font-bold font-mono text-slate-400 uppercase tracking-wider flex justify-between items-center bg-slate-50 border border-slate-150 p-2 rounded">
-                <span>EDITORE DI REFERTAZIONE NEURORADIOLOGICA (STILE LATEX)</span>
-                <span className="text-[9px] italic font-normal text-slate-500 font-sans">Bozza conforme al layout di stampa clinica</span>
+                <span>{t('report.editorHeader')}</span>
+                <span className="text-[9px] italic font-normal text-slate-500 font-sans">{t('report.editableBadge')}</span>
               </label>
 
               <div className="bg-[#fdfcfb] border border-slate-200 shadow-inner rounded p-8 md:p-12 max-w-3xl mx-auto my-2 relative overflow-hidden select-text border-t-4 border-t-slate-400">
@@ -98,10 +112,10 @@ export default function ReportEditor({
                   <span>EIDOS REPORTING SYSTEM</span>
                   <span>ID PAZIENTE: {patient.patient_id.substring(0, 8)}...</span>
                 </div>
-                
+
                 <div className="text-center mb-8 font-serif">
                   <h1 className="text-base md:text-lg font-bold text-slate-900 tracking-wide uppercase">
-                    REFERTO DI ESAME TC ENCEFALO
+                    {t('report.docHeader')}
                   </h1>
                   <div className="w-16 h-[1px] bg-slate-300 mx-auto mt-2"></div>
                 </div>
@@ -128,13 +142,13 @@ export default function ReportEditor({
               <div className="bg-amber-500/10 border border-amber-500/25 p-2.5 rounded text-[11px] text-amber-800 flex gap-2 items-start" id="disclaimer bg">
                 <ShieldAlert className="h-4 w-4 text-amber-600 shrink-0 mt-0.5 animate-pulse" />
                 <p className="leading-snug">
-                  <span className="font-semibold">AVVISO STRUMENTALE CLINICO:</span> {disclaimer}
+                  <span className="font-semibold">NOTA:</span> {disclaimer}
                 </p>
               </div>
             )}
 
             <div className="flex flex-wrap items-center justify-between gap-2.5 border-t border-slate-100 pt-3" id="editor-actions-controls">
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <button
                   onClick={onSaveDraftChanges}
                   disabled={isSavingReport || !reportText.trim() || patient.validated}
@@ -144,23 +158,23 @@ export default function ReportEditor({
                   {isSavingReport ? (
                     <>
                       <span className="animate-spin h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full mr-1"></span>
-                      SALVATAGGIO BOZZA...
+                      {t('report.btnSaving')}
                     </>
                   ) : (
                     <>
                       <Save className="h-3.5 w-3.5" />
-                      SALVA MODIFICHE BOZZA
+                      {t('report.btnSaveDraft')}
                     </>
                   )}
                 </button>
 
                 <button
-                  onClick={onExportTextFile}
-                  className="bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold px-3 py-2 rounded flex items-center gap-1.5 transition border border-slate-200 font-mono tracking-wide uppercase shadow-sm cursor-pointer"
-                  id="export-file-referto-btn"
+                  onClick={() => setIsExportModalOpen(true)}
+                  className="bg-white hover:bg-slate-50 text-slate-800 text-xs font-bold px-3.5 py-2 rounded flex items-center gap-1.5 transition border border-slate-300 font-mono tracking-wide uppercase shadow-sm cursor-pointer"
+                  id="export-referto-main-btn"
                 >
-                  <Download className="h-3.5 w-3.5" />
-                  ESPORTA .TXT
+                  <Download className="h-3.5 w-3.5 text-blue-900" />
+                  {t('report.btnExportMain')}
                 </button>
               </div>
 
@@ -170,7 +184,7 @@ export default function ReportEditor({
                   disabled={isGeneratingReport}
                   className="text-xs font-mono font-bold hover:text-blue-950 text-blue-900 underline cursor-pointer"
                 >
-                  Ripristina bozza di referto originale
+                  {t('report.restoreOriginal')}
                 </button>
               )}
             </div>
@@ -185,13 +199,13 @@ export default function ReportEditor({
               <CheckCircle2 className="h-6 w-6 text-emerald-600 shrink-0" />
               <div>
                 <h4 className="font-bold text-emerald-900 font-mono text-[11px] tracking-wider uppercase mb-0.5">
-                  REFERTO VALIDATO CLINICAMENTE E FIRMATO
+                  {t('report.validatedBadge')}
                 </h4>
-                <p className="text-slate-650 text-[11px] leading-relaxed">
-                  Questo referto è stato firmato digitalmente, archiviato nel sistema RIS/PACS ospedaliero ed è idoneo all'uso clinico definitivo.
+                <p className="text-slate-600 text-[11px] leading-relaxed">
+                  {t('report.validatedDesc')}
                 </p>
                 <p className="text-[10px] font-mono text-emerald-700 mt-1.5 uppercase font-bold">
-                  Firmato digitalmente da: {patient.validated_by}
+                  {t('report.signedBy')} {patient.validated_by}
                 </p>
               </div>
             </div>
@@ -205,12 +219,12 @@ export default function ReportEditor({
                 {isValidating ? (
                   <>
                     <span className="animate-spin h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full mr-1"></span>
-                    RIAPERTURA REFERTO...
+                    {t('report.btnUnvalidating')}
                   </>
                 ) : (
                   <>
                     <RefreshCw className="h-3.5 w-3.5" />
-                    RIAPRI PER RIESAME
+                    {t('report.btnUnvalidate')}
                   </>
                 )}
               </button>
@@ -228,10 +242,10 @@ export default function ReportEditor({
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="space-y-1 md:max-w-[70%]">
               <h4 className="font-bold text-blue-900 font-mono text-[11px] tracking-wider uppercase">
-                FIRMA E VALIDAZIONE CLINICA DEFINITIVA
+                {t('report.validationTitle')}
               </h4>
               <p className="text-slate-500 text-[11px] leading-relaxed font-sans">
-                Verificare con cura il testo del referto. Una volta convalidato e firmato digitalmente dal medico strutturato, il referto sarà bloccato in sola lettura e trasmesso ai reparti clinici.
+                {t('report.validationDesc')}
               </p>
             </div>
 
@@ -245,12 +259,12 @@ export default function ReportEditor({
                 {isValidating ? (
                   <>
                     <span className="animate-spin h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full mr-1"></span>
-                    REGISTRAZIONE FIRMA DIGITALE...
+                    {t('report.btnValidating')}
                   </>
                 ) : (
                   <>
                     <CheckCheck className="h-4.5 w-4.5" />
-                    CONVALIDA E APPLICA FIRMA DIGITALE
+                    {t('report.btnValidate')}
                   </>
                 )}
               </button>
@@ -269,3 +283,4 @@ export default function ReportEditor({
     </div>
   );
 }
+
