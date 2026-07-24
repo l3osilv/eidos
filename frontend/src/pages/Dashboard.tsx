@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Search, Calendar, FileSpreadsheet, Plus, Database } from 'lucide-react';
 import { Patient, User } from '../types';
+import { useLanguage } from '../context/LanguageContext';
 
 interface DashboardProps {
   patients: Patient[];
@@ -17,6 +18,7 @@ export default function Dashboard({
   onSelectPatient,
   onOpenNewPatientForm,
 }: DashboardProps) {
+  const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<FilterStatus>('ALL');
 
@@ -34,21 +36,21 @@ export default function Dashboard({
         return (
           <span className="inline-flex items-center gap-1 bg-emerald-500/10 text-emerald-700 border border-emerald-500/20 text-[11px] font-medium px-2.5 py-0.5 rounded-full" id={`status-badge-validated-${p.patient_id}`}>
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-            Validato
+            {t('dashboard.filter.validated')}
           </span>
         );
       case 'REPORT_GENERATED':
         return (
           <span className="inline-flex items-center gap-1 bg-amber-500/10 text-amber-700 border border-amber-500/20 text-[11px] font-medium px-2.5 py-0.5 rounded-full" id={`status-badge-reported-${p.patient_id}`}>
             <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-            Referto Redatto
+            {t('dashboard.filter.reported')}
           </span>
         );
       case 'CLASSIFIED':
         return (
           <span className="inline-flex items-center gap-1 bg-sky-500/10 text-sky-700 border border-sky-500/20 text-[11px] font-medium px-2.5 py-0.5 rounded-full" id={`status-badge-classified-${p.patient_id}`}>
             <span className="w-1.5 h-1.5 rounded-full bg-sky-500"></span>
-            Analizzato
+            {t('dashboard.filter.classified')}
           </span>
         );
       case 'TO_CLASSIFY':
@@ -56,7 +58,7 @@ export default function Dashboard({
         return (
           <span className="inline-flex items-center gap-1 bg-slate-500/10 text-slate-700 border border-slate-500/20 text-[11px] font-medium px-2.5 py-0.5 rounded-full" id={`status-badge-toclassify-${p.patient_id}`}>
             <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
-            Da Analizzare
+            {t('dashboard.filter.toClassify')}
           </span>
         );
     }
@@ -97,10 +99,10 @@ export default function Dashboard({
         <div>
           <h2 className="text-sm font-semibold text-slate-800 tracking-tight flex items-center gap-2 uppercase font-mono">
             <Database className="h-4 w-4 text-slate-500" />
-            Registro Pazienti ed Esami Neuroradiologici
+            {t('dashboard.title')}
           </h2>
           <p className="text-xs text-slate-500">
-            Seleziona un esame per visualizzare le slice TC, avviare la valutazione dei reperti e redigere il referto.
+            {t('dashboard.subtitle')}
           </p>
         </div>
 
@@ -111,7 +113,7 @@ export default function Dashboard({
             id="btn-registra-paziente"
           >
             <Plus className="h-4 w-4" />
-            REGISTRA NUOVO PAZIENTE
+            {t('dashboard.btnNewPatient')}
           </button>
         ) : (
           <button
@@ -121,7 +123,7 @@ export default function Dashboard({
             id="btn-registra-paziente-disabilitato"
           >
             <Plus className="h-4 w-4" />
-            REGISTRA NUOVO PAZIENTE
+            {t('dashboard.btnNewPatient')}
           </button>
         )}
       </div>
@@ -133,10 +135,10 @@ export default function Dashboard({
           </span>
           <input
             type="text"
-            placeholder="Cerca per Nome, CF o ID..."
+            placeholder={t('dashboard.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 text-xs border border-slate-200 bg-white rounded text-slate-800 placeholder-slate-405 focus:outline-none focus:border-sky-500 font-sans"
+            className="w-full pl-9 pr-3 py-1.5 text-xs border border-slate-200 bg-white rounded text-slate-800 placeholder-slate-400 focus:outline-none focus:border-sky-500 font-sans"
             id="search-patient-input"
           />
         </div>
@@ -144,20 +146,20 @@ export default function Dashboard({
         <div className="flex flex-wrap gap-1.5 md:col-span-2 md:justify-end" id="filter-tabs-pannel">
           {(['ALL', 'TO_CLASSIFY', 'CLASSIFIED', 'REPORT_GENERATED', 'VALIDATED'] as FilterStatus[]).map((filter) => {
             const labels: Record<FilterStatus, string> = {
-              ALL: 'Tutti',
-              TO_CLASSIFY: 'Da Analizzare',
-              CLASSIFIED: 'Analizzati',
-              REPORT_GENERATED: 'Refertati',
-              VALIDATED: 'Validati',
+              ALL: t('dashboard.filter.all'),
+              TO_CLASSIFY: t('dashboard.filter.toClassify'),
+              CLASSIFIED: t('dashboard.filter.classified'),
+              REPORT_GENERATED: t('dashboard.filter.reported'),
+              VALIDATED: t('dashboard.filter.validated'),
             };
             const isActive = statusFilter === filter;
             return (
               <button
                 key={filter}
                 onClick={() => setStatusFilter(filter)}
-                className={`px-3 py-1.5 text-xs font-semibold rounded transition ${isActive
+                className={`px-3 py-1.5 text-xs font-semibold rounded transition cursor-pointer ${isActive
                     ? 'bg-blue-900 text-white shadow-sm'
-                    : 'bg-slate-105 hover:bg-slate-200 text-slate-600'
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
                   }`}
               >
                 {labels[filter]}
@@ -171,15 +173,15 @@ export default function Dashboard({
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-150 text-[10px] font-mono uppercase tracking-wider text-slate-500 font-semibold">
-              <th className="py-3 px-4">Paziente {`&`} Codice ID</th>
-              <th className="py-3 px-4">Codice Fiscale</th>
+              <th className="py-3 px-4">{t('dashboard.col.patient')}</th>
+              <th className="py-3 px-4">{t('dashboard.col.cf')}</th>
               <th className="py-3 px-4 flex items-center gap-1">
                 <Calendar className="h-3 w-3" />
-                Data Caricamento
+                {t('dashboard.col.date')}
               </th>
-              <th className="py-3 px-4">Slice</th>
-              <th className="py-3 px-4">Stato Diagnostico</th>
-              <th className="py-3 px-4 text-right">Azione Clinica</th>
+              <th className="py-3 px-4">{t('dashboard.col.slices')}</th>
+              <th className="py-3 px-4">{t('dashboard.col.status')}</th>
+              <th className="py-3 px-4 text-right">{t('dashboard.col.action')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 text-xs">
@@ -220,8 +222,8 @@ export default function Dashboard({
                       <div className="flex flex-col gap-1 items-start">
                         {getStatusBadge(p)}
                         {p.validated && p.validated_by && (
-                          <div className="text-[10px] italic text-slate-405 mt-0.5">
-                            Convalidato da: <span className="underline font-mono text-slate-500">{p.validated_by}</span>
+                          <div className="text-[10px] italic text-slate-400 mt-0.5">
+                            {t('dashboard.validatedBy')} <span className="underline font-mono text-slate-500">{p.validated_by}</span>
                           </div>
                         )}
                       </div>
@@ -230,13 +232,13 @@ export default function Dashboard({
                     <td className="py-3.5 px-4 text-right" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => onSelectPatient(p.patient_id)}
-                        className={`text-xs font-bold px-3 py-1.5 rounded transition shadow-sm uppercase font-mono tracking-wide ${status === 'VALIDATED'
-                            ? 'border border-slate-200 text-slate-600 hover:bg-slate-105'
+                        className={`text-xs font-bold px-3 py-1.5 rounded transition shadow-sm uppercase font-mono tracking-wide cursor-pointer ${status === 'VALIDATED'
+                            ? 'border border-slate-200 text-slate-600 hover:bg-slate-100'
                             : 'bg-blue-900 hover:bg-blue-950 text-white'
                           }`}
                         id={`btn-esamina-paziente-${p.patient_id}`}
                       >
-                        {status === 'VALIDATED' ? 'Visualizza Referto' : 'Esamina Esame'}
+                        {status === 'VALIDATED' ? t('dashboard.action.viewReport') : t('dashboard.action.examine')}
                       </button>
                     </td>
                   </tr>
@@ -247,8 +249,8 @@ export default function Dashboard({
                 <td colSpan={6} className="py-10 text-center text-slate-400">
                   <div className="flex flex-col items-center gap-1.5">
                     <FileSpreadsheet className="h-8 w-8 text-slate-300" />
-                    <p className="text-sm font-medium">Nessun esame corrisponde ai criteri impostati.</p>
-                    <p className="text-xs">Prova a cambiare i filtri superiori o a cercare un codice diverso.</p>
+                    <p className="text-sm font-medium">{t('dashboard.emptyTitle')}</p>
+                    <p className="text-xs">{t('dashboard.emptyDesc')}</p>
                   </div>
                 </td>
               </tr>

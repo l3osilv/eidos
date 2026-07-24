@@ -10,6 +10,8 @@ import FindingsPanel from '../components/FindingsPanel';
 import CoherenceAlert from '../components/CoherenceAlert';
 import ReportEditor from '../components/ReportEditor';
 import LoadingNotice from '../components/LoadingNotice';
+import ExportModal from '../components/ExportModal';
+import { useLanguage } from '../context/LanguageContext';
 
 interface PatientDetailProps {
   patient: Patient;
@@ -24,11 +26,13 @@ export default function PatientDetail({
   onBack,
   onUpdatePatientState,
 }: PatientDetailProps) {
+  const { t } = useLanguage();
   const [activeSlice, setActiveSlice] = useState<number>(0);
   const [findings, setFindings] = useState<Finding[]>([]);
   const [reportText, setReportText] = useState<string>('');
   const [disclaimer, setDisclaimer] = useState<string>('');
   const [isLoadingDetail, setIsLoadingDetail] = useState<boolean>(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
 
   const [isClassifying, setIsClassifying] = useState<boolean>(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState<boolean>(false);
@@ -108,7 +112,7 @@ export default function PatientDetail({
       onUpdatePatientState(updatedPat);
     } catch (err: any) {
       setErrorText(err.message || 'Errore durante la classificazione.');
-    } finally {
+    } fontally: () => {
       setIsClassifying(false);
     }
   };
@@ -219,31 +223,39 @@ export default function PatientDetail({
             <button
               onClick={onBack}
               className="p-1.5 hover:bg-slate-200 rounded text-slate-500 hover:text-slate-800 transition mr-1 cursor-pointer"
-              title="Torna al registro"
+              title={t('detail.backTitle')}
               id="back-to-registry-detail"
             >
               <ArrowLeft className="h-4.5 w-4.5" />
             </button>
             <div>
               <h2 className="text-sm font-semibold text-slate-800 font-mono tracking-wide uppercase">
-                Scheda Paziente: {patient.cognome.toUpperCase()} {patient.nome}
+                Scheda Paziente · {patient.cognome.toUpperCase()} {patient.nome}
               </h2>
             </div>
           </div>
         </div>
-        <LoadingNotice message="Caricamento dei dati clinici del paziente..." />
+        <LoadingNotice />
       </div>
     );
   }
 
   return (
     <div className="space-y-4" id="clinical-workspace-container">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-50 border border-slate-205 p-3 rounded-lg">
+      <ExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        patient={patient}
+        reportText={reportText}
+        disclaimer={disclaimer}
+      />
+
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-50 border border-slate-200 p-3 rounded-lg">
         <div className="flex items-center gap-3">
           <button
             onClick={onBack}
             className="p-1.5 hover:bg-slate-200 rounded text-slate-500 hover:text-slate-800 transition mr-1 cursor-pointer"
-            title="Torna al registro"
+            title={t('newPatient.back')}
             id="back-to-registry-detail"
           >
             <ArrowLeft className="h-4.5 w-4.5" />
@@ -251,20 +263,20 @@ export default function PatientDetail({
 
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-sm font-semibold text-slate-805 font-mono tracking-wide uppercase">
+              <h2 className="text-sm font-semibold text-slate-800 font-mono tracking-wide uppercase">
                 Scheda Paziente: {patient.cognome.toUpperCase()} {patient.nome}
               </h2>
               {patient.validated ? (
-                <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded border border-emerald-350 flex items-center gap-1 uppercase tracking-wide">
-                  <CheckCheck className="h-3 w-3" /> Validato Clinicamente
+                <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded border border-emerald-300 flex items-center gap-1 uppercase tracking-wide">
+                  <CheckCheck className="h-3 w-3" /> {t('detail.validatedLabel')}
                 </span>
               ) : (
                 <span className="bg-slate-200 text-slate-700 text-[10px] font-semibold px-2 py-0.5 rounded border border-slate-300 uppercase tracking-wide">
-                  {patient.has_report ? 'Bozza Refertata' : patient.has_classification ? 'In Attesa Referto' : 'Da Analizzare'}
+                  {patient.has_report ? t('detail.draftLabel') : patient.has_classification ? t('detail.pendingReportLabel') : t('detail.toAnalyzeLabel')}
                 </span>
               )}
             </div>
-            <p className="text-xs text-slate-505 mt-0.5">
+            <p className="text-xs text-slate-500 mt-0.5">
               CF: <span className="font-mono font-medium text-slate-700">{patient.codice_fiscale}</span> • Data Nascita: <span className="font-mono text-slate-700">{patient.data_nascita}</span> • ID: <span className="font-mono text-slate-700">{patient.patient_id}</span>
             </p>
           </div>
@@ -272,12 +284,12 @@ export default function PatientDetail({
 
         {patient.has_report && (
           <button
-            onClick={handleExportTextFile}
-            className="bg-blue-900 hover:bg-blue-955 text-white text-xs font-bold px-3 py-1.5 rounded flex items-center justify-center gap-1.5 transition shadow-sm font-mono self-start md:self-auto tracking-wide uppercase cursor-pointer"
+            onClick={() => setIsExportModalOpen(true)}
+            className="bg-blue-900 hover:bg-blue-950 text-white text-xs font-bold px-3.5 py-1.5 rounded flex items-center justify-center gap-1.5 transition shadow-sm font-mono self-start md:self-auto tracking-wide uppercase cursor-pointer"
             id="quick-export-detail-btn"
           >
             <Download className="h-3.5 w-3.5" />
-            ESPORTA REFERTO .TXT
+            {t('report.btnExportMain')}
           </button>
         )}
       </div>
@@ -286,13 +298,13 @@ export default function PatientDetail({
         <div className="bg-red-50 border border-red-200 text-red-700 p-3.5 rounded text-xs flex items-start gap-2.5 animate-in fade-in" id="detail-workspace-error">
           <AlertCircle className="h-4.5 w-4.5 text-red-500 shrink-0 mt-0.5" />
           <div className="flex-1">
-            <span className="font-semibold">Errore:</span> {errorText}
+            <span className="font-semibold">{t('detail.error')}</span> {errorText}
           </div>
           <button
             onClick={() => setErrorText(null)}
             className="text-[10px] font-mono text-red-400 hover:text-red-700 underline cursor-pointer"
           >
-            Nascondi
+            {t('detail.hideError')}
           </button>
         </div>
       )}
@@ -306,8 +318,8 @@ export default function PatientDetail({
           />
 
           <div className="bg-slate-50 border border-slate-200 p-3 rounded-lg text-[11px] text-slate-500 font-sans leading-relaxed">
-            <span className="font-semibold text-slate-705 block mb-1 uppercase font-mono tracking-wider">Note di consultazione:</span>
-            Le scansioni assiali derivano dal modulo PACS. L'analisi preliminare valuta l'intero blocco composto da 8 slices aggregate per identificare anomalie.
+            <span className="font-semibold text-slate-700 block mb-1 uppercase font-mono tracking-wider">{t('detail.consultationNotes')}</span>
+            {t('detail.consultationDesc')}
           </div>
         </div>
 
