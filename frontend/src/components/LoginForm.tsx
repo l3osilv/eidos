@@ -4,6 +4,7 @@ import { apiLogin, apiRegister, setTokenMemory, setCurrentUser } from '../api';
 import { Role, User } from '../types';
 import { navigate } from '../router';
 import eidosLogo from '../assets/eidos.svg';
+import { useLanguage } from '../context/LanguageContext';
 
 interface LoginFormProps {
   onLoginSuccess: (user: User) => void;
@@ -14,6 +15,7 @@ export default function LoginForm({
   onLoginSuccess,
   isRegister = false,
 }: LoginFormProps) {
+  const { t } = useLanguage();
   const [nome, setNome] = useState('');
   const [cognome, setCognome] = useState('');
   const [username, setUsername] = useState('');
@@ -49,7 +51,6 @@ export default function LoginForm({
       params.append('password', password);
 
       const res = await apiLogin(params);
-
       setTokenMemory(res.access_token);
 
       const loggedUser: User = {
@@ -64,7 +65,7 @@ export default function LoginForm({
       setCurrentUser(loggedUser);
       onLoginSuccess(loggedUser);
     } catch (err: any) {
-      setErrorMessage(err.message || 'Errore di autenticazione. Verificare le credenziali.');
+      setErrorMessage(err.message || t('login.errorDefault'));
     } finally {
       setLoading(false);
     }
@@ -101,14 +102,14 @@ export default function LoginForm({
       <div className="text-center mb-6">
         <img src={eidosLogo} alt="Eidos Logo" className="h-12 w-12 mx-auto mb-3" />
         <h2 className="text-sm font-extrabold text-blue-900 tracking-wider font-mono uppercase">
-          Portale NeuroReport Clinico
+          {t('login.portalAccess')}
         </h2>
         <p className="text-[10px] text-slate-400 mt-1 uppercase font-mono tracking-widest font-semibold">
-          Clinica Neuroradiologica • Accesso RIS / PACS
+          {t('login.systemSubtitle')}
         </p>
       </div>
 
-      <div className="bg-white border border-slate-205 rounded-lg shadow-sm overflow-hidden">
+      <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
         <div className="flex border-b border-slate-150 bg-slate-50">
           <button
             onClick={() => {
@@ -116,12 +117,12 @@ export default function LoginForm({
               setErrorMessage(null);
               setRegSuccessMessage(null);
             }}
-            className={`flex-1 py-3 text-xs font-bold font-mono uppercase border-r border-slate-150 transition ${!isRegister
+            className={`flex-1 py-3 text-xs font-bold font-mono uppercase border-r border-slate-150 transition cursor-pointer ${!isRegister
               ? 'bg-white text-blue-950 border-t-2 border-t-blue-900'
               : 'text-slate-500 hover:text-slate-800'
               }`}
           >
-            Accedi al Portale
+            {t('login.tabLogin')}
           </button>
           <button
             onClick={() => {
@@ -129,12 +130,12 @@ export default function LoginForm({
               setErrorMessage(null);
               setRegSuccessMessage(null);
             }}
-            className={`flex-1 py-3 text-xs font-bold font-mono uppercase transition ${isRegister
+            className={`flex-1 py-3 text-xs font-bold font-mono uppercase transition cursor-pointer ${isRegister
               ? 'bg-white text-blue-950 border-t-2 border-t-blue-900'
               : 'text-slate-500 hover:text-slate-800'
               }`}
           >
-            Crea Nuovo Account
+            {t('login.tabRegister')}
           </button>
         </div>
 
@@ -150,7 +151,7 @@ export default function LoginForm({
             <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-3 rounded text-xs flex gap-2 items-start animate-fade-in" id="login-reg-success">
               <ShieldCheck className="h-4.5 w-4.5 text-emerald-600 shrink-0 mt-0.5" />
               <p className="font-semibold text-[11px] leading-relaxed">
-                {regSuccessMessage || "Registrazione completata con successo! Inserisci le tue credenziali per accedere."}
+                {regSuccessMessage || t('login.successMsg')}
               </p>
             </div>
           )}
@@ -159,7 +160,7 @@ export default function LoginForm({
             {isRegister && (
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Nome</label>
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">{t('login.firstName')}</label>
                   <div className="relative">
                     <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
                       <UserIcon className="h-4 w-4" />
@@ -176,7 +177,7 @@ export default function LoginForm({
                   </div>
                 </div>
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">Cognome</label>
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">{t('login.lastName')}</label>
                   <div className="relative">
                     <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
                       <UserIcon className="h-4 w-4" />
@@ -197,7 +198,7 @@ export default function LoginForm({
 
             <div>
               <label className="block text-[11px] font-semibold text-slate-600 mb-1 font-mono uppercase tracking-wide">
-                {isRegister ? 'Username (Generato Automaticamente)' : 'Username'}
+                {isRegister ? t('login.usernameAutoLabel') : t('login.usernameLabel')}
               </label>
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 font-mono">
@@ -218,13 +219,13 @@ export default function LoginForm({
               </div>
               {isRegister && (
                 <p className="text-[10px] text-slate-400 mt-1 font-mono">
-                  L'username viene generato concatenando Nome e Cognome in minuscolo.
+                  {t('login.usernameHint')}
                 </p>
               )}
             </div>
 
             <div>
-              <label className="block text-[11px] font-semibold text-slate-600 mb-1 font-mono uppercase tracking-wide">Password</label>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1 font-mono uppercase tracking-wide">{t('login.passwordLabel')}</label>
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
                   <Lock className="h-4 w-4" />
@@ -244,7 +245,7 @@ export default function LoginForm({
             {isRegister && (
               <>
                 <div className="bg-slate-50 p-2.5 rounded border border-slate-200">
-                  <label className="block text-[10px] font-semibold text-slate-500 mb-1.5 font-mono">RUOLO SANITARIO</label>
+                  <label className="block text-[10px] font-semibold text-slate-500 mb-1.5 font-mono">{t('login.roleLabel')}</label>
                   <div className="flex gap-2.5">
                     <label className="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer">
                       <input
@@ -254,7 +255,7 @@ export default function LoginForm({
                         onChange={() => setRole('medico')}
                         className="text-blue-900 focus:ring-blue-800"
                       />
-                      <span className="font-medium">Medico Strutturato</span>
+                      <span className="font-medium">{t('login.roleMedico')}</span>
                     </label>
                     <label className="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer">
                       <input
@@ -264,13 +265,13 @@ export default function LoginForm({
                         onChange={() => setRole('specializzando')}
                         className="text-blue-900 focus:ring-blue-800"
                       />
-                      <span className="font-medium">Specializzando</span>
+                      <span className="font-medium">{t('login.roleSpecializzando')}</span>
                     </label>
                   </div>
                 </div>
 
                 <div className="bg-slate-50 p-2.5 rounded border border-slate-200">
-                  <label className="block text-[10px] font-semibold text-slate-500 mb-1.5 font-mono">SESSO</label>
+                  <label className="block text-[10px] font-semibold text-slate-500 mb-1.5 font-mono">{t('login.genderLabel')}</label>
                   <div className="flex gap-2.5">
                     <label className="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer">
                       <input
@@ -280,7 +281,7 @@ export default function LoginForm({
                         onChange={() => setGender('M')}
                         className="text-blue-900 focus:ring-blue-800"
                       />
-                      <span className="font-medium">Maschio</span>
+                      <span className="font-medium">{t('login.genderMale')}</span>
                     </label>
                     <label className="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer">
                       <input
@@ -290,7 +291,7 @@ export default function LoginForm({
                         onChange={() => setGender('F')}
                         className="text-blue-900 focus:ring-blue-800"
                       />
-                      <span className="font-medium">Femmina</span>
+                      <span className="font-medium">{t('login.genderFemale')}</span>
                     </label>
                   </div>
                 </div>
@@ -300,16 +301,16 @@ export default function LoginForm({
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-900 hover:bg-blue-950 text-white font-mono text-xs font-bold py-2.5 px-4 rounded transition flex justify-center items-center shadow-sm uppercase tracking-wider"
+              className="w-full bg-blue-900 hover:bg-blue-950 text-white font-mono text-xs font-bold py-2.5 px-4 rounded transition flex justify-center items-center shadow-sm uppercase tracking-wider disabled:opacity-60 cursor-pointer"
               id="btn-submit-credentials"
             >
               {loading ? (
                 <>
                   <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></span>
-                  AUTENTICAZIONE IN CORSO...
+                  {t('login.btnLoading')}
                 </>
               ) : (
-                isRegister ? 'Registra Account' : 'Accedi'
+                isRegister ? t('login.btnRegister') : t('login.btnLogin')
               )}
             </button>
           </form>

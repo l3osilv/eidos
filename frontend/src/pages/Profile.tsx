@@ -2,6 +2,7 @@ import React, { useState, useRef, ChangeEvent } from 'react';
 import { ArrowLeft, Upload, Trash2, Check, User as UserIcon, Shield } from 'lucide-react';
 import { User, Gender } from '../types';
 import { apiUpdateProfile } from '../api';
+import { useLanguage } from '../context/LanguageContext';
 
 interface ProfileProps {
   currentUser: User | null;
@@ -14,6 +15,7 @@ export default function Profile({
   onUpdateUser,
   onBack,
 }: ProfileProps) {
+  const { t } = useLanguage();
   const [nome, setNome] = useState(currentUser?.nome || '');
   const [cognome, setCognome] = useState(currentUser?.cognome || '');
   const [gender, setGender] = useState<Gender>(currentUser?.gender || 'M');
@@ -27,9 +29,9 @@ export default function Profile({
   if (!currentUser) {
     return (
       <div className="text-center p-8 bg-white border border-slate-200 rounded-lg shadow-sm">
-        <p className="text-sm font-semibold text-slate-700">Nessun utente autenticato.</p>
-        <button onClick={onBack} className="mt-4 text-xs font-bold text-blue-900 underline uppercase">
-          Torna indietro
+        <p className="text-sm font-semibold text-slate-700">{t('profile.noUser')}</p>
+        <button onClick={onBack} className="mt-4 text-xs font-bold text-blue-900 underline uppercase cursor-pointer">
+          {t('profile.noUserBack')}
         </button>
       </div>
     );
@@ -41,11 +43,11 @@ export default function Profile({
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
       if (!file.type.startsWith('image/')) {
-        setErrorMessage("Il file deve essere un'immagine.");
+        setErrorMessage(t('profile.errorFileType'));
         return;
       }
       if (file.size > 2 * 1024 * 1024) {
-        setErrorMessage("Dimensione massima consentita: 2 MB.");
+        setErrorMessage(t('profile.errorFileSize'));
         return;
       }
 
@@ -56,7 +58,7 @@ export default function Profile({
         }
       };
       reader.onerror = () => {
-        setErrorMessage("Errore di caricamento immagine.");
+        setErrorMessage(t('profile.errorFileType'));
       };
       reader.readAsDataURL(file);
     }
@@ -75,7 +77,7 @@ export default function Profile({
     setSuccessMessage(null);
 
     if (!nome.trim() || !cognome.trim()) {
-      setErrorMessage("Nome e cognome sono obbligatori.");
+      setErrorMessage(t('profile.errorRequired'));
       return;
     }
 
@@ -92,7 +94,7 @@ export default function Profile({
       };
 
       onUpdateUser(updatedUser);
-      setSuccessMessage("Profilo aggiornato!");
+      setSuccessMessage(t('profile.successMsg'));
       setTimeout(() => {
         onBack();
       }, 1000);
@@ -107,21 +109,21 @@ export default function Profile({
     <div className="max-w-2xl mx-auto" id="profile-management-screen">
       <button
         onClick={onBack}
-        className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 font-semibold mb-4 transition uppercase font-mono"
+        className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 font-semibold mb-4 transition uppercase font-mono cursor-pointer"
         id="btn-indietro-profilo"
       >
         <ArrowLeft className="h-4 w-4" />
-        Annulla e Torna Indietro
+        {t('profile.backBtn')}
       </button>
 
       <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
         <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
           <div>
             <h2 className="text-sm font-semibold text-slate-800 tracking-tight font-mono uppercase">
-              Profilo Personale Sanitario
+              {t('profile.title')}
             </h2>
             <p className="text-xs text-slate-500">
-              Modifica i tuoi dati anagrafici e la foto del profilo per la firma digitale.
+              {t('profile.subtitle')}
             </p>
           </div>
           <div className="flex items-center gap-1 text-slate-400 font-mono text-[10px] bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">
@@ -133,12 +135,12 @@ export default function Profile({
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {errorMessage && (
             <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded text-xs" id="profile-error-alert">
-              <span className="font-semibold">Errore:</span> {errorMessage}
+              <span className="font-semibold">{t('profile.errorPrefix')}</span> {errorMessage}
             </div>
           )}
 
           {successMessage && (
-            <div className="bg-emerald-50 border border-emerald-250 text-emerald-800 p-3 rounded text-xs flex items-center gap-2" id="profile-success-alert">
+            <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-3 rounded text-xs flex items-center gap-2" id="profile-success-alert">
               <Check className="h-4.5 w-4.5 text-emerald-600" />
               <span className="font-semibold">{successMessage}</span>
             </div>
@@ -157,7 +159,7 @@ export default function Profile({
 
             <div className="space-y-2 text-center sm:text-left flex-1">
               <label className="block text-xs font-bold text-slate-400 font-mono uppercase tracking-wider">
-                Foto del Profilo (Avatar)
+                {t('profile.avatarLabel')}
               </label>
               <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
                 <button
@@ -166,21 +168,21 @@ export default function Profile({
                   className="bg-blue-900 hover:bg-blue-950 text-white text-[11px] font-bold px-3 py-1.5 rounded flex items-center gap-1.5 transition font-mono uppercase tracking-wide cursor-pointer"
                 >
                   <Upload className="h-3.5 w-3.5" />
-                  Carica Foto
+                  {t('profile.uploadPhoto')}
                 </button>
                 {avatar && (
                   <button
                     type="button"
                     onClick={removeAvatar}
-                    className="bg-white hover:bg-slate-50 text-red-600 hover:text-red-755 text-[11px] font-bold px-3 py-1.5 rounded flex items-center gap-1.5 transition border border-slate-205 font-mono uppercase tracking-wide cursor-pointer"
+                    className="bg-white hover:bg-slate-50 text-red-600 hover:text-red-700 text-[11px] font-bold px-3 py-1.5 rounded flex items-center gap-1.5 transition border border-slate-200 font-mono uppercase tracking-wide cursor-pointer"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
-                    Rimuovi
+                    {t('profile.removePhoto')}
                   </button>
                 )}
               </div>
               <p className="text-[10px] text-slate-400">
-                PNG o JPG. Dimensione massima 2 MB.
+                {t('profile.photoHint')}
               </p>
               <input
                 ref={fileInputRef}
@@ -195,26 +197,26 @@ export default function Profile({
           <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">Nome</label>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">{t('profile.firstName')}</label>
                 <input
                   type="text"
                   required
                   value={nome}
                   onChange={(e) => setNome(e.target.value)}
                   placeholder="Mario"
-                  className="w-full border border-slate-205 rounded px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 font-semibold"
+                  className="w-full border border-slate-200 rounded px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 font-semibold"
                   id="profile-nome-input"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">Cognome</label>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">{t('profile.lastName')}</label>
                 <input
                   type="text"
                   required
                   value={cognome}
                   onChange={(e) => setCognome(e.target.value)}
                   placeholder="Rossi"
-                  className="w-full border border-slate-205 rounded px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 font-semibold"
+                  className="w-full border border-slate-200 rounded px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 font-semibold"
                   id="profile-cognome-input"
                 />
               </div>
@@ -222,36 +224,36 @@ export default function Profile({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-[11px] font-semibold text-slate-605 mb-1">Genere</label>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">{t('profile.gender')}</label>
                 <select
                   value={gender}
                   onChange={(e) => setGender(e.target.value as Gender)}
-                  className="w-full border border-slate-205 rounded px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full border border-slate-200 rounded px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
                   id="profile-gender-input"
                 >
-                  <option value="M">Maschio (Dr.)</option>
-                  <option value="F">Femmina (Dr.ssa)</option>
+                  <option value="M">{t('profile.genderMale')}</option>
+                  <option value="F">{t('profile.genderFemale')}</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-slate-400 mb-1">Ruolo Sanitario (Sola Lettura)</label>
+                <label className="block text-[11px] font-semibold text-slate-400 mb-1">{t('profile.roleLabel')}</label>
                 <input
                   type="text"
                   disabled
-                  value={currentUser.role === 'medico' ? 'Medico Strutturato' : 'Specializzando'}
+                  value={currentUser.role === 'medico' ? t('profile.roleMedico') : t('profile.roleSpecializzando')}
                   className="w-full border border-slate-200 bg-slate-50 text-slate-500 rounded px-3 py-2 text-xs font-semibold cursor-not-allowed"
                 />
               </div>
             </div>
 
             <div className="bg-slate-50 border border-slate-200 p-3 rounded">
-              <span className="block text-[10px] font-semibold text-slate-500 font-mono uppercase">Firma Clinica</span>
+              <span className="block text-[10px] font-semibold text-slate-500 font-mono uppercase">{t('profile.signatureLabel')}</span>
               <p className="text-sm font-bold text-blue-900 mt-1 font-mono">
                 {gender === 'M' ? 'Dr.' : 'Dr.ssa'} {cognome || 'Cognome'}
               </p>
               <p className="text-[10px] text-slate-400 mt-0.5">
-                Questa dicitura verrà usata per convalidare i referti.
+                {t('profile.signatureHint')}
               </p>
             </div>
           </div>
@@ -261,26 +263,26 @@ export default function Profile({
               type="button"
               onClick={onBack}
               disabled={loading}
-              className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-800 transition disabled:opacity-50"
+              className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-800 transition disabled:opacity-50 cursor-pointer"
             >
-              ANNULLA
+              {t('profile.cancelBtn')}
             </button>
 
             <button
               type="submit"
               disabled={loading}
-              className="bg-blue-900 hover:bg-blue-950 text-white text-xs font-bold px-5 py-2.5 rounded flex items-center gap-1.5 transition font-mono tracking-wide shadow-sm uppercase disabled:opacity-50"
+              className="bg-blue-900 hover:bg-blue-950 text-white text-xs font-bold px-5 py-2.5 rounded flex items-center gap-1.5 transition font-mono tracking-wide shadow-sm uppercase disabled:opacity-50 cursor-pointer"
               id="profile-save-btn"
             >
               {loading ? (
                 <>
                   <span className="animate-spin h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full"></span>
-                  SALVATAGGIO...
+                  {t('profile.savingBtn')}
                 </>
               ) : (
                 <>
                   <Check className="h-4 w-4" />
-                  SALVA MODIFICHE
+                  {t('profile.saveBtn')}
                 </>
               )}
             </button>

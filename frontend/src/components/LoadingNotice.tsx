@@ -1,10 +1,14 @@
 import { Loader2, Activity } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 interface LoadingNoticeProps {
   message?: string;
 }
 
-export default function LoadingNotice({ message = 'Caricamento in corso...' }: LoadingNoticeProps) {
+export default function LoadingNotice({ message }: LoadingNoticeProps) {
+  const { t } = useLanguage();
+  const displayMessage = message || t('detail.loadingMsg');
+
   return (
     <div className="flex flex-col items-center justify-center min-h-[400px] p-8 bg-white border border-slate-200 rounded-xl shadow-sm text-center animate-in fade-in duration-300">
       <div className="relative flex items-center justify-center w-24 h-24 mb-6">
@@ -18,11 +22,11 @@ export default function LoadingNotice({ message = 'Caricamento in corso...' }: L
 
       <h3 className="text-sm font-semibold text-slate-800 tracking-wide uppercase font-mono mb-2 flex items-center gap-2 justify-center">
         <Loader2 className="h-4 w-4 text-blue-950 animate-spin" />
-        {message}
+        {displayMessage}
       </h3>
-      
-      <p className="text-xs text-slate-450 text-slate-500 max-w-sm leading-relaxed">
-        Sincronizzazione in corso con il server e la rete PACS. L'interazione con le sezioni cliniche è momentaneamente sospesa.
+
+      <p className="text-xs text-slate-500 max-w-sm leading-relaxed">
+        {t('loading.subtitle')}
       </p>
 
       <div className="flex items-center gap-1.5 mt-5">

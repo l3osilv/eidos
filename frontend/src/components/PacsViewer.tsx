@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, RefreshCw, AlertTriangle, Activity } from 'lucide-react';
 import { Patient } from '../types';
 import { apiGetSliceImage } from '../api';
+import { useLanguage } from '../context/LanguageContext';
 
 interface PacsViewerProps {
   patient: Patient;
@@ -14,13 +15,14 @@ export default function PacsViewer({
   selectedIndex,
   onSliceChange,
 }: PacsViewerProps) {
+  const { t } = useLanguage();
   const [imageUrl, setImageUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [errorStatus, setErrorStatus] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
-    let oldUrl = imageUrl;
+    const oldUrl = imageUrl;
 
     setLoading(true);
     setErrorStatus(null);
@@ -34,7 +36,7 @@ export default function PacsViewer({
         }
       } catch (err: any) {
         if (active) {
-          setErrorStatus(err.message || 'Errore caricamento slice.');
+          setErrorStatus(err.message || t('pacs.errorTitle'));
           setLoading(false);
         }
       }
@@ -72,7 +74,7 @@ export default function PacsViewer({
       <div className="flex items-center justify-between pb-3 border-b border-slate-800 text-slate-400 text-xs mb-3 font-mono">
         <div className="flex items-center gap-2">
           <Activity className="h-4 w-4 text-emerald-500 animate-pulse" />
-          <span className="font-semibold text-slate-200">VISUALIZZATORE TC ASSIALE</span>
+          <span className="font-semibold text-slate-200">{t('pacs.title')}</span>
         </div>
       </div>
 
@@ -80,12 +82,12 @@ export default function PacsViewer({
         {loading ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-950" id="pacs-skeleton-screen">
             <RefreshCw className="h-8 w-8 text-sky-400 animate-spin" />
-            <span className="text-xs font-mono text-slate-400 tracking-wider">CARICAMENTO SLICE TC...</span>
+            <span className="text-xs font-mono text-slate-400 tracking-wider">{t('pacs.loading')}</span>
           </div>
         ) : errorStatus ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center gap-2 bg-slate-950" id="pacs-error-screen">
             <AlertTriangle className="h-10 w-10 text-red-500" />
-            <span className="text-xs font-mono text-slate-300 font-semibold">ERRORE CARICAMENTO IMMAGINE</span>
+            <span className="text-xs font-mono text-slate-300 font-semibold">{t('pacs.errorTitle')}</span>
             <p className="text-[11px] text-slate-500 leading-relaxed font-sans">{errorStatus}</p>
           </div>
         ) : (
@@ -102,23 +104,23 @@ export default function PacsViewer({
           <>
             <button
               onClick={handlePrev}
-              className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-slate-900/60 hover:bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800 opacity-0 group-hover:opacity-100 transition duration-150"
-              title="Slice Precedente"
+              className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-slate-900/60 hover:bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800 opacity-0 group-hover:opacity-100 transition duration-150 cursor-pointer"
+              title={t('pacs.prevSlice')}
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
 
             <button
               onClick={handleNext}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-slate-900/60 hover:bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800 opacity-0 group-hover:opacity-100 transition duration-150"
-              title="Slice Successiva"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-slate-900/60 hover:bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800 opacity-0 group-hover:opacity-100 transition duration-150 cursor-pointer"
+              title={t('pacs.nextSlice')}
             >
               <ChevronRight className="h-5 w-5" />
             </button>
 
             <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-slate-950/80 border border-slate-800 px-2.5 py-1 rounded text-[10px] font-mono text-slate-300 flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
-              <span>SLICE {selectedIndex + 1} / 8</span>
+              <span>{t('pacs.slice')} {selectedIndex + 1} / 8</span>
             </div>
           </>
         )}
@@ -126,7 +128,7 @@ export default function PacsViewer({
 
       <div className="mt-4" id="pacs-thumbnails-strip">
         <label className="block text-[10px] font-semibold font-mono text-slate-500 uppercase tracking-wider mb-2">
-          Miniature di Navigazione
+          {t('pacs.thumbnails')}
         </label>
 
         <div className="grid grid-cols-8 gap-1.5">
@@ -136,14 +138,11 @@ export default function PacsViewer({
             return (
               <button
                 key={idx}
-                onClick={() => {
-                  onSliceChange(idx);
-                }}
-                className={`relative aspect-square bg-slate-900 border rounded overflow-hidden select-none transition ${isCurrent
-                  ? 'border-blue-500 ring-2 ring-blue-500/20'
-                  : 'border-slate-800 hover:border-slate-600'
-                  }`}
-                title={`Vedi Slice ${idx + 1}`}
+                onClick={() => { onSliceChange(idx); }}
+                className={`relative aspect-square bg-slate-900 border rounded overflow-hidden select-none transition cursor-pointer ${
+                  isCurrent ? 'border-blue-500 ring-2 ring-blue-500/20' : 'border-slate-800 hover:border-slate-600'
+                }`}
+                title={`${t('pacs.viewSlice')} ${idx + 1}`}
                 id={`thumb-slice-picker-${idx}`}
               >
                 {thumbSrc ? (
