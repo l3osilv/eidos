@@ -15,6 +15,7 @@ import Home from './pages/Home';
 import { ShieldAlert } from 'lucide-react';
 import { useLocation, navigate } from './router';
 import LoadingNotice from './components/LoadingNotice';
+import { LanguageProvider } from './context/LanguageContext';
 
 export default function App() {
   const [currentUser, setSessionUser] = useState<User | null>(getCurrentUser());
@@ -114,115 +115,118 @@ export default function App() {
   const activeSelectedPatient = patients.find((p) => p.patient_id === selectedPatientId);
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col text-slate-800 antialiased font-sans">
-      <Header
-        currentUser={currentUser}
-        onLogout={handleLogout}
-        onProfileClick={handleProfileClick}
-      />
+    <LanguageProvider>
+      <div className="min-h-screen bg-slate-50 flex flex-col text-slate-800 antialiased font-sans">
+        <Header
+          currentUser={currentUser}
+          onLogout={handleLogout}
+          onProfileClick={handleProfileClick}
+        />
 
-      <main className="flex-1 w-full max-w-7xl mx-auto px-4 py-8">
-        {currentUser === null ? (
-          currentPath === '/register' ? (
-            <Register
-              onLoginSuccess={handleLoginSuccess}
-            />
-          ) : currentPath === '/' ? (
-            <Home />
+        <main className="flex-1 w-full max-w-7xl mx-auto px-4 py-8">
+          {currentUser === null ? (
+            currentPath === '/register' ? (
+              <Register
+                onLoginSuccess={handleLoginSuccess}
+              />
+            ) : currentPath === '/' ? (
+              <Home />
+            ) : (
+              <Login
+                onLoginSuccess={handleLoginSuccess}
+              />
+            )
+          ) : isLoadingPatients ? (
+            <LoadingNotice message="Sincronizzazione registro pazienti in corso..." />
           ) : (
-            <Login
-              onLoginSuccess={handleLoginSuccess}
-            />
-          )
-        ) : isLoadingPatients ? (
-          <LoadingNotice message="Sincronizzazione registro pazienti in corso..." />
-        ) : (
-          <div className="space-y-6 border-0">
-            <div id="clinical-workspace-stage">
-              {currentPath === '/dashboard' && (
-                <div className="space-y-4">
-                  {listError && (
-                    <div className="bg-red-50 border border-red-200 text-red-700 p-3.5 rounded text-xs flex items-start gap-2.5 animate-in fade-in" id="dashboard-registry-error">
-                      <ShieldAlert className="h-4.5 w-4.5 text-red-500 shrink-0 mt-0.5" />
-                      <div>
-                        <span className="font-semibold">Errore Sincronizzazione Registry:</span> {listError}
-                        <button
-                          onClick={loadPatientsRegistry}
-                          className="block mt-1 font-mono hover:underline font-semibold uppercase text-red-900"
-                        >
-                          Riprova caricamento
-                        </button>
+            <div className="space-y-6 border-0">
+              <div id="clinical-workspace-stage">
+                {currentPath === '/dashboard' && (
+                  <div className="space-y-4">
+                    {listError && (
+                      <div className="bg-red-50 border border-red-200 text-red-700 p-3.5 rounded text-xs flex items-start gap-2.5 animate-in fade-in" id="dashboard-registry-error">
+                        <ShieldAlert className="h-4.5 w-4.5 text-red-500 shrink-0 mt-0.5" />
+                        <div>
+                          <span className="font-semibold">Errore Sincronizzazione Registry:</span> {listError}
+                          <button
+                            onClick={loadPatientsRegistry}
+                            className="block mt-1 font-mono hover:underline font-semibold uppercase text-red-900"
+                          >
+                            Riprova caricamento
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  <Dashboard
-                    patients={patients}
-                    currentUser={currentUser}
-                    onSelectPatient={(id) => navigate(`/patients/${id}`)}
-                    onOpenNewPatientForm={() => navigate('/new-patient')}
-                  />
-                </div>
-              )}
-
-              {currentPath === '/new-patient' && (() => {
-                if (currentUser?.role !== 'medico') {
-                  setTimeout(() => navigate('/dashboard'), 0);
-                  return null;
-                }
-                return (
-                  <NewPatient
-                    onBack={handleBackToDashboard}
-                    onSubmit={handleCreateNewPatient}
-                    isSubmitting={isFormSubmitting}
-                  />
-                );
-              })()}
-
-              {currentPath === '/profile' && (
-                <Profile
-                  currentUser={currentUser}
-                  onUpdateUser={handleUpdateUser}
-                  onBack={handleBackToDashboard}
-                />
-              )}
-
-              {currentPath.startsWith('/patients/') && (() => {
-                if (activeSelectedPatient) {
-                  return (
-                    <PatientDetail
-                      patient={activeSelectedPatient}
+                    <Dashboard
+                      patients={patients}
                       currentUser={currentUser}
+                      onSelectPatient={(id) => navigate(`/patients/${id}`)}
+                      onOpenNewPatientForm={() => navigate('/new-patient')}
+                    />
+                  </div>
+                )}
+
+                {currentPath === '/new-patient' && (() => {
+                  if (currentUser?.role !== 'medico') {
+                    setTimeout(() => navigate('/dashboard'), 0);
+                    return null;
+                  }
+                  return (
+                    <NewPatient
                       onBack={handleBackToDashboard}
-                      onUpdatePatientState={handleUpdatePatientItemState}
+                      onSubmit={handleCreateNewPatient}
+                      isSubmitting={isFormSubmitting}
                     />
                   );
-                }
+                })()}
 
-                return (
-                  <div className="bg-red-50 border border-red-200 text-red-700 p-8 rounded text-center font-mono text-xs">
-                    <ShieldAlert className="h-8 w-8 text-red-500 mx-auto mb-2" />
-                    <span>ERRORE CONTESTO CLINICO: Paziente non trovato o caricamento in corso...</span>
-                    <button
-                      onClick={handleBackToDashboard}
-                      className="block mt-3 underline mx-auto text-slate-600 hover:text-slate-900 font-semibold uppercase"
-                    >
-                      Torna al registro pazienti
-                    </button>
-                  </div>
-                );
-              })()}
+                {currentPath === '/profile' && (
+                  <Profile
+                    currentUser={currentUser}
+                    onUpdateUser={handleUpdateUser}
+                    onBack={handleBackToDashboard}
+                  />
+                )}
+
+                {currentPath.startsWith('/patients/') && (() => {
+                  if (activeSelectedPatient) {
+                    return (
+                      <PatientDetail
+                        patient={activeSelectedPatient}
+                        currentUser={currentUser}
+                        onBack={handleBackToDashboard}
+                        onUpdatePatientState={handleUpdatePatientItemState}
+                      />
+                    );
+                  }
+
+                  return (
+                    <div className="bg-red-50 border border-red-200 text-red-700 p-8 rounded text-center font-mono text-xs">
+                      <ShieldAlert className="h-8 w-8 text-red-500 mx-auto mb-2" />
+                      <span>ERRORE CONTESTO CLINICO: Paziente non trovato o caricamento in corso...</span>
+                      <button
+                        onClick={handleBackToDashboard}
+                        className="block mt-3 underline mx-auto text-slate-600 hover:text-slate-900 font-semibold uppercase"
+                      >
+                        Torna al registro pazienti
+                      </button>
+                    </div>
+                  );
+                })()}
+              </div>
             </div>
-          </div>
-        )}
-      </main>
+          )}
+        </main>
 
-      <footer className="bg-slate-900 border-t border-slate-800 py-4 text-center text-[10px] font-mono text-slate-500">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>© 2026 Leonardo Silvestri - Progetto di Tesi Triennale Università di Trento</span>
-          <span>Paolo Giorgini, Selene Tommasi, Merid Tesfay, Marco Robol</span>
-        </div>
-      </footer>
-    </div>
+        <footer className="bg-slate-900 border-t border-slate-800 py-4 text-center text-[10px] font-mono text-slate-500">
+          <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <span>© 2026 Leonardo Silvestri - Progetto di Tesi Triennale Università di Trento</span>
+            <span>Paolo Giorgini, Selene Tommasi, Merid Tesfay, Marco Robol</span>
+          </div>
+        </footer>
+      </div>
+    </LanguageProvider>
   );
 }
+
