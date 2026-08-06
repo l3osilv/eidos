@@ -10,3 +10,6 @@ backend/storage/
 # Node dependencies & build
 node_modules/
 dist/
+
+
+docs/data
