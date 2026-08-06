@@ -1,87 +1,87 @@
 # Eidos — Frontend
 
-Questa cartella contiene il codice del frontend di **Eidos**. Si tratta di una Single Page Application (SPA) realizzata per simulare l'interfaccia di una workstation radiologica per l'analisi delle TC all'encefalo.
+Questa cartella contiene il codice del frontend di **Eidos**. È una Single Page Application (SPA) sviluppata per simulare l'interfaccia di una workstation radiologica per l'analisi delle TC all'encefalo.
 
-L'applicazione permette ai medici e agli specializzandi di visualizzare lo storico dei pazienti, caricare nuovi esami, scorrere le slice delle immagini, visualizzare le predizioni dell'IA ed editare/validare il referto generato in automatico.
+L'applicazione permette a medici e specializzandi di consultare lo storico dei pazienti, registrare nuovi esami, visualizzare le slice TC, esaminare le stime dei modelli e modificare o convalidare i referti.
 
 ---
 
 ## Tecnologie utilizzate
 
-Ho scelto di sviluppare l'interfaccia utilizzando queste tecnologie:
+L'interfaccia è sviluppata con le seguenti tecnologie:
 
-- **Core**: React 19 e TypeScript (per avere un codice tipizzato e ridurre gli errori a runtime).
-- **Build System**: Vite (per un caricamento ultra-veloce in fase di sviluppo e per creare pacchetti ottimizzati per la produzione).
-- **Styling**: Tailwind CSS v4 (per realizzare una UI pulita, minimale e in stile clinico).
+- **Core**: React 19 e TypeScript.
+- **Build System**: Vite.
+- **Styling**: Tailwind CSS v4.
 - **Icone**: Lucide-React.
-- **Routing**: Un piccolo sistema di routing interno personalizzato, scritto da me per non appesantire il caricamento con librerie esterne.
+- **Routing**: Sistema di routing client-side essenziale per la gestione delle pagine senza librerie esterne.
 
 ---
 
-## Come ho organizzato il codice e ottimizzazioni
+## Organizzazione del codice e ottimizzazioni
 
-Durante lo sviluppo ho cercato di strutturare il codice in modo ordinato ed efficiente, implementando alcune ottimizzazioni per migliorare l'esperienza d'uso:
+Durante lo sviluppo sono state adottate alcune soluzioni per mantenere il codice pulito ed efficiente:
 
-1. **Richieste API semplificate (`authFetch`):**
-   Invece di dover includere manualmente i token JWT in ogni richiesta HTTP ed implementare la gestione degli errori per ogni chiamata, in `api.ts` ho creato una funzione helper chiamata `authFetch()`. Questa funzione si occupa in automatico di aggiungere l'header di autorizzazione e intercettare gli errori di sessione scaduta (401) o permessi insufficienti (403).
+1. **Gestione centrale delle chiamate API (`authFetch`):**
+   La funzione helper `authFetch()` in `api.ts` gestisce l'inserimento dell'header di autenticazione JWT e intercetta automaticamente gli errori di sessione scaduta (401) o permessi insufficienti (403).
 
-2. **Caricamento parallelo delle slice (`Promise.all`):**
-   All'interno del visualizzatore (`PacsViewer.tsx`), per evitare che le 8 immagini della TC vengano caricate una alla volta in modo sequenziale rallentando la pagina, ho usato `Promise.all` per effettuare le richieste parallele e caricare l'intero esame molto più velocemente.
+2. **Caricamento ottimizzato delle slice (`Promise.all`):**
+   Nel componente `PacsViewer.tsx`, le 8 immagini della TC vengono caricate in parallelo tramite `Promise.all` per ridurre i tempi di attesa.
 
-3. **Ottimizzazione della memoria:**
-   Ho rimosso la logica che ricreava inutilmente oggetti e stili condizionali (come i colori dei badge per lo stato del paziente) ad ogni render di React, posizionandoli come costanti a livello di modulo. Questo rende la navigazione della UI più reattiva e alleggerisce il lavoro del browser.
+3. **Gestione efficiente dello stato e delle costanti:**
+   Gli oggetti di configurazione e le mappature condizionali sono definiti a livello di modulo anziché ricreati ad ogni render di React, per alleggerire l'esecuzione del browser.
 
-4. **Rimozione del codice inutilizzato:**
-   Ho tenuto il file `package.json` pulito, rimuovendo tutte le librerie esterne non necessarie (es. pacchetti pesanti di animazione) a favore di componenti React leggeri e scritti direttamente.
+4. **Dipendenze essenziali:**
+   Il file `package.json` include esclusivamente le librerie necessarie, evitando dipendenze ridondanti.
 
 ---
 
 ## Struttura delle cartelle
 
-```
+```text
 frontend/
 ├── src/
-│   ├── api.ts              # Funzioni per dialogare con il backend FastAPI
+│   ├── api.ts              # Chiamate API al backend FastAPI
 │   ├── types.ts            # Tipi e interfacce TypeScript (Patient, User, Findings)
-│   ├── App.tsx             # Componente radice dell'app e gestione delle rotte protette
-│   ├── router.tsx          # Gestore per la navigazione all'interno dell'app
-│   ├── index.css           # Configurazione di Tailwind e stili globali
-│   ├── main.tsx            # Punto di ingresso di React
+│   ├── App.tsx             # Componente principale e gestione autenticazione/rotte
+│   ├── router.tsx          # Gestione navigazione client-side
+│   ├── index.css           # Stili globali e Tailwind CSS
+│   ├── main.tsx            # Entrypoint di React
 │   │
-│   ├── components/         # Componenti dell'interfaccia utente
-│   │   ├── Header.tsx           # Barra superiore con il menu e logout
-│   │   ├── LoadingNotice.tsx    # Schermata di caricamento per l'inferenza dell'IA
-│   │   ├── PacsViewer.tsx       # Componente per scorrere le 8 slice TC
-│   │   ├── FindingsPanel.tsx    # Schermata dei risultati del Modello I (IA)
-│   │   ├── ReportEditor.tsx     # Campo di testo del referto Modello II con tasto di export
-│   │   ├── CoherenceAlert.tsx   # Messaggio che segnala discrepanze testo/reperti
-│   │   └── LoginForm.tsx        # Schermata di login e registrazione utenti
+│   ├── components/         # Componenti UI
+│   │   ├── Header.tsx           # Barra superiore e navigazione utente
+│   │   ├── LoadingNotice.tsx    # Indicatore di caricamento
+│   │   ├── PacsViewer.tsx       # Visualizzatore delle 8 slice TC
+│   │   ├── FindingsPanel.tsx    # Pannello risultati del Modello I
+│   │   ├── ReportEditor.tsx     # Editor per il testo del referto (Modello II)
+│   │   ├── CoherenceAlert.tsx   # Segnalazione discrepanze tra reperti e testo
+│   │   └── LoginForm.tsx        # Moduli di login e registrazione
 │   │
-│   └── pages/              # Schermate principali dell'applicazione
-│       ├── Dashboard.tsx        # Lista dei pazienti inseriti con i filtri
-│       ├── PatientDetail.tsx    # Schermata di lavoro (Visualizzatore + Editor referti)
-│       ├── NewPatient.tsx       # Modulo per inserire un nuovo paziente e caricare le 8 immagini
-│       ├── Profile.tsx          # Gestione dei dati del medico e della firma
-│       ├── Login.tsx            # Schermata di accesso
-│       └── Register.tsx         # Schermata di registrazione
+│   └── pages/              # Pagine principali
+│       ├── Dashboard.tsx        # Elenco dei pazienti e filtri di ricerca
+│       ├── PatientDetail.tsx    # Scheda paziente (Visualizzatore + Editor)
+│       ├── NewPatient.tsx       # Modulo inserimento paziente e caricamento slice
+│       ├── Profile.tsx          # Gestione profilo utente
+│       ├── Login.tsx            # Pagina di accesso
+│       └── Register.tsx         # Pagina di registrazione
 ```
 
 ---
 
 ## Funzionalità principali
 
-- **Accesso protetto e gestione ruoli:** L'interfaccia si adatta a seconda del ruolo dell'utente (*Medico* o *Specializzando*). Solo i medici strutturati hanno abilitato il pulsante per firmare e validare definitivamente un referto.
-- **Dashboard Pazienti:** Tabella che permette di monitorare tutti i casi inseriti nel sistema e di vedere subito il loro stato nel workflow (es. caricato, refertato, validato).
-- **Visualizzatore delle Slice (PacsViewer):** Un modulo che simula i visualizzatori clinici reali, consentendo di scorrere le 8 slice TC utilizzando la tastiera o la filmstrip laterale.
-- **Pannello dei Findings dell'IA:** Mostra a schermo i risultati della classificazione del Modello I, con barre di probabilità colorate a seconda che superino o meno la soglia clinica.
-- **Editor Referti e Controllo Coerenza:** Permette di visualizzare la bozza generata dal Modello II e di modificarla. Se il medico rimuove manualmente una patologia che l'IA ha rilevato come positiva, l'applicazione mostra un avviso visivo di incoerenza.
-- **Esportazione in formato testo:** Permette di esportare il referto finale firmato in un file di testo piatto (.txt) pronto per essere salvato in locale o copiato in altri sistemi ospedalieri.
+- **Autenticazione e gestione ruoli:** L'interfaccia si adatta al ruolo dell'utente (*Medico Strutturato* o *Specializzando*). La validazione e firma finale del referto è abilitata esclusivamente per i medici strutturati.
+- **Dashboard Pazienti:** Elenco che consente di monitorare lo stato di avanzamento degli esami (da analizzare, analizzato, refertato, validato).
+- **Visualizzatore Slice (PacsViewer):** Modulo per scorrere le 8 slice assiali tramite tastiera o miniatura.
+- **Pannello Reperti:** Mostra i risultati di classificazione del Modello I con indicazione delle soglie decisionali.
+- **Editor Referti e Controllo Coerenza:** Consente di modificare la bozza generata e avvisa il medico in caso di discrepanze tra reperti rilevati e testo salvato.
+- **Esportazione in formato testo:** Permette di esportare il referto finale in un file `.txt`.
 
 ---
 
 ## Esecuzione Locale (Sviluppo)
 
-Prima di avviare il frontend, assicurati che il backend di FastAPI sia attivo sulla porta `8000` (`http://localhost:8000`), altrimenti le chiamate API restituiranno errore.
+Prima di avviare il frontend, verificare che il backend sia attivo sulla porta `8000` (`http://localhost:8000`).
 
 ```bash
 # 1. Spostati nella cartella del frontend
@@ -90,17 +90,17 @@ cd frontend
 # 2. Installa le dipendenze npm
 npm install
 
-# 3. Avvia il server di sviluppo con Vite
+# 3. Avvia il server di sviluppo Vite
 npm run dev
 ```
 
-Una volta avviato, apri il browser all'indirizzo `http://localhost:5173`.
+L'applicazione sarà accessibile all'indirizzo `http://localhost:5173`.
 
 ---
 
-## Build per la Produzione
+## Build di Produzione
 
-Se vuoi generare il pacchetto statico ottimizzato e minimizzato da caricare su un server web (es. Nginx):
+Per generare i file statici ottimizzati per la produzione:
 
 ```bash
 npm run build
