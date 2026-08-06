@@ -10,7 +10,7 @@ Questo repository contiene il codice di **Eidos**, un sistema di supporto alla r
 
 L'applicazione web è progettata per assistere radiologi e specializzandi durante l'analisi delle TC all'encefalo. Il sistema si articola in tre componenti principali:
 
-- **Modello I (Classificazione):** Modello basato su DenseNet-121 con pre-addestramento SimCLR (adattato dalla repository [SSL-Eidos-Pathology](https://github.com/meridtesfay/SSL-Eidos-Pathology)) che analizza le 8 slice della TC e stima la probabilità di presenza di 4 patologie: *Blood* (emorragia), *Ischemia* (infarto cerebrale acuto), *Edema* (edema cerebrale) e *Mass* (massa espansiva).
+- **Modello I (Classificazione):** Modello basato su DenseNet-121 con pre-addestramento SimCLR (adattato dalla repository [SSL-BrainCT-Pathology](https://github.com/meridtesfay/SSL-BrainCT-Pathology)) che analizza le 8 slice della TC e stima la probabilità di presenza di 4 patologie: *Blood* (emorragia), *Ischemia* (infarto cerebrale acuto), *Edema* (edema cerebrale) e *Mass* (massa espansiva).
 - **Modello II (Generatore di referti):** Modulo che elabora le stime del Modello I e compone automaticamente una bozza di referto testuale strutturata.
 - **Interfaccia Web (Frontend):** UI in React e TypeScript comprensiva di visualizzatore in stile PACS per la consultazione delle slice TC, pannello dei risultati ed editor per la modifica e validazione del referto.
 
