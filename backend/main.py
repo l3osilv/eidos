@@ -1,31 +1,12 @@
 """
-Backend FastAPI — endpoint REST per Eidos.
+Backend FastAPI per Eidos — API REST per la refertazione neuroradiologica.
 
-Flusso di lavoro diagnostico:
-  1. Login/registrazione operatore
-  2. Creazione paziente + upload 8 slice TC           (RF1)
-  3. Classificazione automatica via Modello I          (RF2)
-  4. Generazione referto via Modello II                (RF3)
-  5. Controllo coerenza findings ↔ referto             (RF4)
-  6. Visualizzazione slice e storico                    (RF5, RF6)
-  7. Validazione + esportazione                        (RF5.3, RF6.2)
+All'avvio (lifespan) carica in memoria i pesi dei 4 classificatori (Modello I)
+e inizializza il generatore di referti (Modello II). I modelli restano come
+singleton per tutta la durata del processo.
 
-Mappa endpoint → requisiti:
-  POST  /auth/register              (gestione utenti)
-  POST  /auth/login                 (gestione utenti)
-  PUT   /users/profile              (gestione utenti)
-  POST  /patients                   RF1.1, RF1.2
-  GET   /patients                   RF6.1
-  GET   /patients/{id}              RF6.1
-  GET   /patients/{id}/slices/{i}   RF5.1, RF5.2
-  POST  /patients/{id}/classify     RF2.1-RF2.4, RNF6.2
-  POST  /patients/{id}/report       RF3.1, RNF6.1
-  GET   /patients/{id}/coherence    RF4.1
-  PUT   /patients/{id}/report       RF3.2, RF3.4
-  POST  /patients/{id}/validate     RF5.3 (solo "medico")
-  POST  /patients/{id}/unvalidate   RF5.3 (solo "medico")
-  GET   /patients/{id}/export       RF6.2
-  GET   /health                     RNF7.1
+Tutte le operazioni di I/O (Mongo via Motor, filesystem, API Anthropic)
+sono asincrone per non bloccare l'event loop di Uvicorn durante l'inferenza.
 """
 import os
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -510,6 +491,6 @@ async def export_report(
         f"Data di nascita: {p['data_nascita']}\n"
         f"Generato il: {p['created_at'].isoformat()}\n"
         f"Validato: {'Sì, da ' + p['validated_by'] if p['validated'] else 'No - in attesa di revisione medica'}\n\n"
-        f"Main findings:\n{findings_str or 'Nessun finding positivo'}\n\n"
+        f"Reperti positivi:\n{findings_str or 'Nessun finding positivo'}\n\n"
         f"Testo referto:\n{p['report_text']}\n"
     )

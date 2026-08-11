@@ -1,10 +1,10 @@
 """
 Modello II — Generazione referto (RF3).
-Composto da due fasi sequenziali:
-  1. Generatore rule-based che produce un testo strutturato garantito corretto.
-  2. Rifinitura linguistica opzionale tramite LLM (llm_refiner.py) per uno stile naturale.
-     Il testo rifinito viene scartato se non supera il controllo di coerenza clinica.
-"""
+Pipeline a tre fasi sequenziali:
+  1. Generatore rule-based: produce il testo strutturato, deterministico e clinicamente corretto.
+  2. Rifinitura linguistica via LLM (llm_refiner.py): migliora la leggibilità senza alterare i reperti.
+  3. Controllo di coerenza: scarta la riscrittura LLM se manca anche un solo finding positivo.
+     In caso di fallback si usa sempre il testo della fase 1."""
 
 import logging
 import os
@@ -222,10 +222,17 @@ CONCLUSIONI_NEGATIVA: List[str] = [
 
 
 def _severity_level(probability: float, threshold: float) -> str:
+    """Mappa il margine probability-threshold su un livello di severità espressiva.
+
+    Soglie (cf. cap. 3 tesi):
+      margin < 0.08          → sospetta  (appena sopra la soglia)
+      0.08 <= margin < 0.35  → probabile
+      margin >= 0.35 o p >= 0.85 → evidente (alta certezza diagnostica)
+    """
     margin = probability - threshold
     if margin < 0.08:
         return "sospetta"
-    if probability >= 0.85:
+    if margin >= 0.35 or probability >= 0.85:
         return "evidente"
     return "probabile"
 
