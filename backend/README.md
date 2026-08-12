@@ -66,7 +66,7 @@ Ecco le librerie e le tecnologie principali impiegate nel server:
 | Autenticazione | **JWT** (`python-jose`) + **bcrypt** (`passlib`) |
 | Deep Learning | **PyTorch** e **timm** (encoder DenseNet-121) |
 | Image Processing | **Pillow**, **OpenCV** e **NumPy** |
-| Rifinitura Linguistica | **Anthropic API** (Claude Haiku per lo stile del testo) |
+| Rifinitura Linguistica | **Groq API** (LLaMA 3.3 70B per lo stile del testo) |
 | Validazione dati | **Pydantic v2** |
 | Versione Python | Python 3.11+ |
 
@@ -82,7 +82,7 @@ backend/
 ├── schemas.py           # Schemi Pydantic per validare richieste e risposte
 ├── model_I.py           # Inizializzazione e inferenza dei 4 classificatori
 ├── model_II.py          # Generazione del referto (rule-based + LLM)
-├── llm_refiner.py       # Integrazione API Anthropic per rifinitura del referto
+├── llm_refiner.py       # Integrazione API Groq (LLaMA 3.3) per rifinitura del referto
 ├── storage.py           # Salvataggio delle immagini su disco
 ├── requirements.txt     # Dipendenze Python
 ├── pyproject.toml       # Configurazioni di progetto
@@ -174,7 +174,7 @@ Crea un file `.env` nella cartella `backend/` prendendo come modello `.env.examp
 | `JWT_SECRET` | *(stringa casuale)* | Chiave per firmare i token JWT |
 | `SSL_BRAINCT_SRC` | `../../SSL-BrainCT-Pathology/...` | Percorso alla repository esterna |
 | `IMAGES_ROOT` | `storage/images` | Percorso locale di salvataggio immagini |
-| `ANTHROPIC_API_KEY` | *(opzionale)* | Chiave API Anthropic per la rifinitura stilistica |
+| `GROQ_API_KEY` | *(opzionale)* | Chiave API Groq per la rifinitura stilistica (llama-3.3-70b-versatile) |
 | `ENABLE_LLM_REFINEMENT` | `true` | Abilita o disabilita il passaggio LLM |
 
 Per generare un `JWT_SECRET` sicuro:

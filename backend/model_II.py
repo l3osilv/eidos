@@ -306,7 +306,7 @@ class ReportModel:
         self.model = "rule_based_v3_with_optional_llm_refinement"
 
     def load(self):
-        status = "attiva" if (ENABLE_LLM_REFINEMENT and llm_refiner.ANTHROPIC_API_KEY) else "disattiva"
+        status = "attiva" if (ENABLE_LLM_REFINEMENT and llm_refiner.GROQ_API_KEY) else "disattiva"
         logger.info("Modello II v3: generatore rule-based pronto, rifinitura LLM %s", status)
 
     def generate_from_findings(

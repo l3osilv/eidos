@@ -1,5 +1,5 @@
 """
-Rifinitura linguistica del referto tramite API Anthropic.
+Rifinitura linguistica del referto tramite API Groq (modelli LLaMA).
 Mantiene inalterato il significato clinico, modificando solo lo stile espositivo.
 """
 
@@ -9,8 +9,8 @@ from typing import List, Optional
 
 logger = logging.getLogger("llm_refiner")
 
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
-MODEL_NAME = os.getenv("ANTHROPIC_REFINER_MODEL", "claude-haiku-4-5-20251001")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+MODEL_NAME = os.getenv("GROQ_REFINER_MODEL", "llama-3.3-70b-versatile")
 REQUEST_TIMEOUT_SECONDS = 15
 
 SYSTEM_PROMPT = """Sei un assistente che riformula referti radiologici già completi in un \
@@ -37,36 +37,37 @@ def _build_user_prompt(skeleton_text: str) -> str:
 
 
 def refine_report(skeleton_text: str) -> Optional[str]:
-    """Invia lo scheletro all'API Anthropic e ne ricava il testo rifinito."""
-    if not ANTHROPIC_API_KEY:
-        logger.info("Rifinitura LLM disattivata (chiave API non impostata)")
+    """Invia lo scheletro all'API Groq e ne ricava il testo rifinito."""
+    if not GROQ_API_KEY:
+        logger.info("Rifinitura LLM disattivata (GROQ_API_KEY non impostata)")
         return None
 
     try:
-        import anthropic
+        from groq import Groq
     except ImportError:
-        logger.warning("Libreria 'anthropic' non installata: rifinitura LLM disattivata")
+        logger.warning("Libreria 'groq' non installata: rifinitura LLM disattivata")
         return None
 
     try:
-        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY, timeout=REQUEST_TIMEOUT_SECONDS)
-        response = client.messages.create(
+        client = Groq(api_key=GROQ_API_KEY, timeout=REQUEST_TIMEOUT_SECONDS)
+        response = client.chat.completions.create(
             model=MODEL_NAME,
+            temperature=0.3,
             max_tokens=800,
-            temperature=0.7,
-            system=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": _build_user_prompt(skeleton_text)}],
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": _build_user_prompt(skeleton_text)},
+            ],
         )
-        refined = "".join(
-            block.text for block in response.content if getattr(block, "type", None) == "text"
-        ).strip()
+        refined = response.choices[0].message.content or ""
+        refined = refined.strip()
 
         if not refined:
             return None
         return refined
 
     except Exception:
-        logger.exception("Chiamata API Anthropic fallita.")
+        logger.exception("Chiamata API Groq fallita.")
         return None
 
 
