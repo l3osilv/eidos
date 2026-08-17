@@ -11,5 +11,6 @@ backend/storage/
 node_modules/
 dist/
 
+docs/
 
-docs/data
+presentazione/

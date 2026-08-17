@@ -112,7 +112,7 @@ export default function PatientDetail({
       onUpdatePatientState(updatedPat);
     } catch (err: any) {
       setErrorText(err.message || 'Errore durante la classificazione.');
-    } fontally: () => {
+    } finally {
       setIsClassifying(false);
     }
   };

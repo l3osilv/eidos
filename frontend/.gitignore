@@ -4,3 +4,6 @@ dist/
 *.log
 .env*
 !.env.example
+
+take_all_screenshots.js
+take_screenshots.js

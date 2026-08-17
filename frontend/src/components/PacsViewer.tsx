@@ -62,11 +62,30 @@ export default function PacsViewer({
 
   const [thumbUrls, setThumbUrls] = useState<string[]>([]);
   useEffect(() => {
+    let active = true;
+    let fetchedUrls: string[] = [];
+
     Promise.all(
       Array.from({ length: 8 }, (_, i) =>
         apiGetSliceImage(patient.patient_id, i).catch(() => '')
       )
-    ).then(setThumbUrls);
+    ).then((urls) => {
+      fetchedUrls = urls;
+      if (active) {
+        setThumbUrls(urls);
+      } else {
+        urls.forEach((url) => {
+          if (url && url.startsWith('blob:')) URL.revokeObjectURL(url);
+        });
+      }
+    });
+
+    return () => {
+      active = false;
+      fetchedUrls.forEach((url) => {
+        if (url && url.startsWith('blob:')) URL.revokeObjectURL(url);
+      });
+    };
   }, [patient.patient_id, patient.has_classification]);
 
   return (
