@@ -51,7 +51,7 @@ export default function ExportModal({
       } else {
         const doc = new jsPDF();
 
-        // Header
+        // intestazione
         doc.setFont("helvetica", "bold");
         doc.setFontSize(14);
         doc.text("EIDOS — SISTEMA DI SUPPORTO IN NEURORADIOLOGIA", 14, 20);
@@ -66,12 +66,12 @@ export default function ExportModal({
         doc.setLineWidth(0.5);
         doc.line(14, 50, 196, 50);
 
-        // Title
+        // titolo
         doc.setFont("times", "bold");
         doc.setFontSize(13);
         doc.text("REFERTO DI ESAME TC ENCEFALO", 105, 60, { align: "center" });
 
-        // Text body
+        // corpo del testo
         doc.setFont("times", "normal");
         doc.setFontSize(11);
         const splitText = doc.splitTextToSize(reportText, 180);
@@ -79,7 +79,7 @@ export default function ExportModal({
 
         let currentY = 72 + (splitText.length * 6) + 10;
 
-        // Disclaimer
+        // avvertenza clinica
         if (disclaimer) {
           if (currentY > 250) {
             doc.addPage();
@@ -92,7 +92,7 @@ export default function ExportModal({
           currentY += (splitDisc.length * 5) + 10;
         }
 
-        // Validation Signature
+        // firma di validazione
         if (patient.validated) {
           if (currentY > 250) {
             doc.addPage();
@@ -105,7 +105,7 @@ export default function ExportModal({
           doc.text(`Firmato da: ${patient.validated_by || 'Medico Strutturato'}`, 14, currentY + 6);
         }
 
-        // Footer page number
+        // numerazione pagina
         const pageCount = doc.getNumberOfPages();
         for (let i = 1; i <= pageCount; i++) {
           doc.setPage(i);

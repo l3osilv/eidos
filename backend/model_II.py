@@ -1,10 +1,11 @@
 """
-Modello II — Generazione referto (RF3).
-Pipeline a tre fasi sequenziali:
-  1. Generatore rule-based: produce il testo strutturato, deterministico e clinicamente corretto.
-  2. Rifinitura linguistica via LLM (llm_refiner.py): migliora la leggibilità senza alterare i reperti.
-  3. Controllo di coerenza: scarta la riscrittura LLM se manca anche un solo finding positivo.
-     In caso di fallback si usa sempre il testo della fase 1."""
+modello II — generazione referto (RF3).
+pipeline a tre fasi sequenziali:
+  1. generatore rule-based: produce il testo strutturato, deterministico e clinicamente corretto.
+  2. rifinitura linguistica via llm (llm_refiner.py): migliora la leggibilità senza alterare i reperti.
+  3. controllo di coerenza: scarta la riscrittura llm se manca anche un solo finding positivo.
+     in caso di fallback si usa sempre il testo della fase 1.
+"""
 
 import logging
 import os
@@ -222,12 +223,8 @@ CONCLUSIONI_NEGATIVA: List[str] = [
 
 
 def _severity_level(probability: float, threshold: float) -> str:
-    """Mappa il margine probability-threshold su un livello di severità espressiva.
-
-    Soglie (cf. cap. 3 tesi):
-      margin < 0.08          → sospetta  (appena sopra la soglia)
-      0.08 <= margin < 0.35  → probabile
-      margin >= 0.35 o p >= 0.85 → evidente (alta certezza diagnostica)
+    """
+    mappa il margine probability-threshold su un livello di severità espressiva.
     """
     margin = probability - threshold
     if margin < 0.08:
@@ -295,12 +292,12 @@ def _compose_raccomandazioni(
     if not lines:
         return "Nessuna raccomandazione specifica; follow-up secondo pratica clinica standard."
 
-    # Preserva l'ordine rimuovendo duplicati
+    # rimozione duplicati preservando l'ordine
     return " ".join(dict.fromkeys(lines))
 
 
 class ReportModel:
-    """Modello II: composizione automatica del referto strutturato."""
+    """modello II: composizione automatica del referto strutturato."""
 
     def __init__(self):
         self.model = "rule_based_v3_with_optional_llm_refinement"
@@ -316,7 +313,7 @@ class ReportModel:
         n_slices: int = 8,
         seed: Optional[int] = None,
     ) -> str:
-        """Costruisce lo scheletro e applica l'eventuale rifinitura linguistica LLM."""
+        """costruisce lo scheletro e applica l'eventuale rifinitura linguistica llm."""
         rng = random.Random(seed)
 
         tecnica = rng.choice(TECNICA_TEMPLATES).format(n_slices=n_slices)

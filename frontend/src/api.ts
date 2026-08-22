@@ -42,7 +42,7 @@ export function getCurrentUser(): User | null {
   return currentSessionUser;
 }
 
-// Wrapper per iniettare l'Authorization header ed intercettare errori comuni
+// wrapper fetch per iniettare l'header di autenticazione
 async function authFetch(path: string, options: RequestInit = {}): Promise<Response> {
   const response = await fetch(`${baseApiUrl}${path}`, {
     ...options,

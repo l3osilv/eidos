@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-// Gestione minimale del routing client-side senza dipendenze esterne
+// router client-side minimale senza dipendenze esterne
 const navigationListeners = new Set<() => void>();
 
 export function navigate(to: string) {

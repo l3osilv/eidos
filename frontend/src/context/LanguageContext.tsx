@@ -5,7 +5,7 @@ export type Language = 'ita' | 'en';
 type Translations = Record<string, { ita: string; en: string }>;
 
 export const translations: Translations = {
-  // Header & Navigation
+  // header e navigazione
   'header.subtitle': {
     ita: 'UniTN-SSL-BrainCT-Pathology',
     en: 'UniTN-SSL-BrainCT-Pathology',
@@ -27,7 +27,7 @@ export const translations: Translations = {
     en: 'Manage Medical Profile',
   },
 
-  // Home Page
+  // home
   'home.tagline': {
     ita: 'SISTEMA DI SUPPORTO IN NEURORADIOLOGIA',
     en: 'DECISION SUPPORT SYSTEM IN NEURORADIOLOGY',
@@ -73,7 +73,7 @@ export const translations: Translations = {
     en: 'Bachelor Thesis Project · University of Trento',
   },
 
-  // Dashboard Page
+  // dashboard
   'dashboard.title': {
     ita: 'Registro Pazienti',
     en: 'Patient Registry',
@@ -107,7 +107,7 @@ export const translations: Translations = {
   'dashboard.emptyDesc': { ita: 'Prova a cambiare i filtri superiori o a cercare un codice diverso.', en: 'Try changing upper filter tabs or search query.' },
   'dashboard.validatedBy': { ita: 'Convalidato da:', en: 'Validated by:' },
 
-  // New Patient Page
+  // nuovo paziente
   'newPatient.title': {
     ita: 'Registrazione Nuovo Paziente',
     en: 'New Patient Registration',
@@ -209,7 +209,7 @@ export const translations: Translations = {
     en: 'UPLOADING...',
   },
 
-  // Findings Panel
+  // pannello reperti
   'findings.title': { ita: 'ANALISI REPERTI TC — MODELLO I', en: 'CT FINDINGS ANALYSIS — MODEL I' },
   'findings.emptyTitle': { ita: 'Valutazione dei reperti non ancora eseguita', en: 'Findings classification not run yet' },
   'findings.emptyDesc': { ita: "Esegui l'analisi automatica per valutare la presenza delle 4 patologie sulle 8 slice TC.", en: 'Run automatic classification to evaluate 4 pathologies across 8 CT slices.' },
@@ -225,7 +225,7 @@ export const translations: Translations = {
   'findings.label.mass': { ita: 'Massa espansiva', en: 'Mass Effect' },
   'findings.validatedNotice': { ita: "L'esame è stato validato. Per rieseguire l'analisi, un medico strutturato deve prima riaprire il referto.", en: 'The exam has been validated. To re-run analysis, an attending physician must first reopen the report.' },
 
-  // Coherence Alert
+  // avviso coerenza
   'coherence.panelTitle': { ita: 'VERIFICA DI COERENZA CLINICA (REPERTI VS TESTO REFERTO)', en: 'CLINICAL COHERENCE CHECK (FINDINGS VS REPORT TEXT)' },
   'coherence.mismatchBadge': { ita: 'INCOERENZA RILEVATA', en: 'MISMATCH DETECTED' },
   'coherence.okBadge': { ita: 'ALLINEAMENTO OK', en: 'ALIGNMENT OK' },
@@ -233,7 +233,7 @@ export const translations: Translations = {
   'coherence.mismatchDesc': { ita: 'La valutazione dei reperti ha evidenziato patologie positive che non risultano esplicitamente citate o descritte nella bozza di referto salvata.', en: 'The findings classification identified positive pathologies not explicitly mentioned in the saved report draft.' },
   'coherence.missingRef': { ita: 'Manca riferimento a:', en: 'Missing reference to:' },
 
-  // Report Editor
+  // editor referto
   'report.title': {
     ita: 'REFERTO CLINICO',
     en: 'CLINICAL REPORT',
@@ -327,7 +327,7 @@ export const translations: Translations = {
     en: 'REOPENING REPORT...',
   },
 
-  // Export Modal
+  // modale esportazione
   'exportModal.title': { ita: 'Esporta Referto Clinico', en: 'Export Clinical Report' },
   'exportModal.formatLabel': { ita: 'Formato di Esportazione', en: 'Export Format' },
   'exportModal.filenameLabel': { ita: 'Nome del File', en: 'File Name' },
@@ -335,7 +335,7 @@ export const translations: Translations = {
   'exportModal.download': { ita: 'SCARICA FILE', en: 'DOWNLOAD FILE' },
   'exportModal.exporting': { ita: 'PREPARAZIONE FILE...', en: 'PREPARING FILE...' },
 
-  // PACS Viewer
+  // visualizzatore pacs
   'pacs.title': { ita: 'VISUALIZZATORE TC ASSIALE', en: 'AXIAL CT VIEWER' },
   'pacs.loading': { ita: 'CARICAMENTO SLICE TC...', en: 'LOADING CT SLICE...' },
   'pacs.errorTitle': { ita: 'ERRORE CARICAMENTO IMMAGINE', en: 'IMAGE LOAD ERROR' },
@@ -349,10 +349,10 @@ export const translations: Translations = {
   'pacs.contrast': { ita: 'Contrasto', en: 'Contrast' },
   'pacs.reset': { ita: 'Ripristina', en: 'Reset' },
 
-  // Loading Notice
+  // avviso caricamento
   'loading.subtitle': { ita: 'Caricamento dei dati dal server in corso...', en: 'Loading data from server...' },
 
-  // Patient Detail - misc
+  // dettaglio paziente
   'detail.consultationNotes': { ita: 'Note di consultazione:', en: 'Consultation notes:' },
   'detail.consultationDesc': { ita: "Le immagini mostrano le 8 slice assiali della TC. L'analisi valuta le slice per identificare le patologie.", en: 'Images show the 8 axial CT slices. Analysis evaluates slices to identify pathologies.' },
   'detail.error': { ita: 'Errore:', en: 'Error:' },
@@ -364,7 +364,7 @@ export const translations: Translations = {
   'detail.loadingMsg': { ita: 'Caricamento dei dati clinici del paziente...', en: 'Loading patient clinical data...' },
   'detail.backTitle': { ita: 'Torna al registro', en: 'Back to registry' },
 
-  // Login Form
+  // form di login
   'login.portalAccess': { ita: 'Accesso al Portale', en: 'Portal Access' },
   'login.systemSubtitle': { ita: 'Sistema Eidos per la Refertazione Neuroradiologica', en: 'Eidos System for Neuroradiological Reporting' },
   'login.tabLogin': { ita: 'Accedi al Portale', en: 'Sign In' },
@@ -387,7 +387,7 @@ export const translations: Translations = {
   'login.successMsg': { ita: 'Registrazione completata con successo! Inserisci le tue credenziali per accedere.', en: 'Account created successfully! Enter your credentials to sign in.' },
   'login.errorDefault': { ita: 'Errore di autenticazione. Verificare le credenziali.', en: 'Authentication error. Please check your credentials.' },
 
-  // Profile Page
+  // profilo utente
   'profile.backBtn': { ita: 'Annulla e Torna Indietro', en: 'Cancel and Go Back' },
   'profile.title': { ita: 'Profilo Personale Sanitario', en: 'Personal Medical Profile' },
   'profile.subtitle': { ita: 'Modifica i tuoi dati anagrafici e la foto del profilo per la firma digitale.', en: 'Edit your personal details and profile photo for digital signature.' },

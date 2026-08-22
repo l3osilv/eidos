@@ -1,7 +1,7 @@
 """
-Integrazione con la repo di ricerca SSL-BrainCT-Pathology (stage2_2d_slice_level).
-Carica 4 classificatori binari indipendenti (binary decomposition),
-ciascuno composto da: DenseNet-121 (pesi SimCLR) + AvgAggregator.
+integrazione con la repo di ricerca ssl-brainct-pathology (stage2_2d_slice_level).
+carica i 4 classificatori binari indipendenti (binary decomposition),
+ciascuno composto da densenet-121 (pesi simclr) + avgaggregator.
 """
 
 import json
@@ -22,16 +22,22 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 _IMAGENET_MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
 _IMAGENET_STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
 
-REPO_SRC_PATH = os.getenv(
-    "SSL_BRAINCT_SRC",
-    "../../SSL-BrainCT-Pathology/stage2_2d_slice_level/supervised_finetuning",
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+_DEFAULT_REPO_SRC = os.path.abspath(
+    os.path.join(BASE_DIR, "../../SSL-BrainCT-Pathology/stage2_2d_slice_level/supervised_finetuning")
 )
+REPO_SRC_PATH = os.getenv("SSL_BRAINCT_SRC", _DEFAULT_REPO_SRC)
+
 if REPO_SRC_PATH not in sys.path:
     sys.path.insert(0, REPO_SRC_PATH)
 
 try:
+    # pyrefly: ignore [missing-import]
     from src.config import Config
+    # pyrefly: ignore [missing-import]
     from src.models import MultiLabelMILClassifier
+    # pyrefly: ignore [missing-import]
     from src.preprocessing import BrainCTPreprocessor
 except ImportError as e:
     Config = None
@@ -43,17 +49,17 @@ except ImportError as e:
     )
 
 CONFIG_JSON_PATHS: Dict[str, str] = {
-    "Blood": "models_config/config_blood.json",
-    "Mass": "models_config/config_massa.json",
-    "Ischemia": "models_config/config_ischemia.json",
-    "Edema": "models_config/config_edema.json",
+    "Blood": os.path.join(BASE_DIR, "models_config/config_blood.json"),
+    "Mass": os.path.join(BASE_DIR, "models_config/config_massa.json"),
+    "Ischemia": os.path.join(BASE_DIR, "models_config/config_ischemia.json"),
+    "Edema": os.path.join(BASE_DIR, "models_config/config_edema.json"),
 }
 
 CHECKPOINT_PATHS: Dict[str, str] = {
-    "Blood": "checkpoints/model_I_blood_best.pth",
-    "Mass": "checkpoints/model_I_mass_best.pth",
-    "Ischemia": "checkpoints/model_I_ischemia_best.pth",
-    "Edema": "checkpoints/model_I_edema_best.pth",
+    "Blood": os.path.join(BASE_DIR, "checkpoints/model_I_blood_best.pth"),
+    "Mass": os.path.join(BASE_DIR, "checkpoints/model_I_mass_best.pth"),
+    "Ischemia": os.path.join(BASE_DIR, "checkpoints/model_I_ischemia_best.pth"),
+    "Edema": os.path.join(BASE_DIR, "checkpoints/model_I_edema_best.pth"),
 }
 
 
@@ -72,7 +78,7 @@ _CLASS_CONFIGS: Dict[str, dict] = {
     label: _load_json_config(label) for label in CONFIG_JSON_PATHS
 }
 
-# Soglie decisionali per ciascuna classe (calibrabili)
+# soglie decisionali per ciascuna classe (calibrabili)
 CLASS_THRESHOLDS: Dict[str, float] = {
     "Blood": 0.5,
     "Mass": 0.5,
@@ -126,7 +132,7 @@ def _build_preprocessor_from_config(json_cfg: dict):
 
 
 class ClassificationModel:
-    """Modello I: classificazione multi-patologia basata su binary decomposition."""
+    """modello I: classificazione multi-patologia basata su binary decomposition."""
 
     def __init__(self):
         self.models: Dict[str, torch.nn.Module] = {}
@@ -134,10 +140,10 @@ class ClassificationModel:
         self.img_size = (224, 224)
 
     def load(self):
-        """Carica in memoria i checkpoint disponibili per ciascuna patologia."""
+        """carica in memoria i checkpoint disponibili per ciascuna patologia."""
         logger.info("Caricamento Modello I su dispositivo: %s", DEVICE)
 
-        # Inizializza il pre-processore usando la prima configurazione valida trovata
+        # inizializzazione preprocessore dalla configurazione json
         for label, json_cfg in _CLASS_CONFIGS.items():
             if json_cfg:
                 self.preprocessor = _build_preprocessor_from_config(json_cfg)
@@ -191,7 +197,7 @@ class ClassificationModel:
         if self.preprocessor is not None:
             processed = self.preprocessor(arr)
         else:
-            # Fallback per test o sviluppo locale senza la repo di ricerca
+            # fallback semplice per test locali senza dipendenze esterne
             processed = np.stack([arr.astype(np.float32) / 255.0] * 3, axis=-1)
 
         resized = cv2.resize(processed, self.img_size, interpolation=cv2.INTER_LINEAR)
@@ -199,14 +205,14 @@ class ClassificationModel:
 
     def _preprocess(self, images: List[Image.Image]) -> torch.Tensor:
         processed = [self._preprocess_one(img) for img in images]
-        stacked = np.stack(processed, axis=0)  # (8, H, W, 3)
-        stacked = stacked.transpose(0, 3, 1, 2)  # (8, 3, H, W)
-        tensor = torch.from_numpy(stacked).float().unsqueeze(0)  # (1, 8, 3, H, W)
+        stacked = np.stack(processed, axis=0)  # (8, h, w, 3)
+        stacked = stacked.transpose(0, 3, 1, 2)  # (8, 3, h, w)
+        tensor = torch.from_numpy(stacked).float().unsqueeze(0)  # (1, 8, 3, h, w)
         return tensor.to(DEVICE)
 
     @torch.no_grad()
     def predict(self, images: List[Image.Image]) -> Dict[str, float]:
-        """Esegue l'inferenza sulle slice e ritorna la probabilità per ciascuna classe."""
+        """esegue l'inferenza sulle slice e ritorna la probabilità per ciascuna classe."""
         if not self.models:
             raise RuntimeError("Nessun modello caricato. Controllare i log di avvio.")
 

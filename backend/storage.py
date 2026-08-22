@@ -1,6 +1,6 @@
 """
-Gestione salvataggio immagini TC su disco.
-Le slice sono salvate come PNG grayscale nella cartella del paziente.
+gestione salvataggio immagini tc su disco.
+le slice sono salvate come png in scala di grigi nella cartella del paziente.
 """
 
 import os
@@ -12,7 +12,7 @@ IMAGES_ROOT = Path(os.getenv("IMAGES_ROOT", "storage/images"))
 
 
 def save_patient_images(patient_id: str, images: List[Image.Image]) -> List[str]:
-    """Salva le 8 slice TC in una cartella denominata con l'ID paziente."""
+    """salva le 8 slice tc in una cartella denominata con l'id del paziente."""
     folder = IMAGES_ROOT / patient_id
     folder.mkdir(parents=True, exist_ok=True)
 

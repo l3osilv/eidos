@@ -1,5 +1,5 @@
 """
-Schemi Pydantic per validazione input/output API.
+schemi pydantic per la validazione dei dati dell'api.
 """
 
 from datetime import date, datetime, timezone
@@ -7,13 +7,13 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
-# --- Auth / Utenti ---
+# --- auth e utenti ---
 
 class UserCreate(BaseModel):
     nome: str
     cognome: str
-    gender: str  # "M" / "F" (serve per Dr. o Dr.ssa)
-    role: str    # "medico" / "specializzando"
+    gender: str  # "M" o "F" per il titolo
+    role: str    # "medico" oppure "specializzando"
     password: str
     username: Optional[str] = None
 
@@ -36,7 +36,7 @@ class ProfileUpdate(BaseModel):
     avatar: Optional[str] = None
 
 
-# --- Pazienti e Findings ---
+# --- pazienti e reperti ---
 
 class FindingResult(BaseModel):
     label: str

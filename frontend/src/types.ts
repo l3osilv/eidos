@@ -28,9 +28,9 @@ export interface Patient {
   cognome: string;
   codice_fiscale: string;
   gender: Gender;
-  data_nascita: string; // Formato YYYY-MM-DD
+  data_nascita: string; // formato YYYY-MM-DD
   created_at: string;
-  num_slices: number; // Sono sempre 8 slice
+  num_slices: number; // 8 slice per paziente
   has_classification: boolean;
   has_report: boolean;
   validated: boolean;
@@ -39,8 +39,8 @@ export interface Patient {
 
 export interface Finding {
   label: 'Blood' | 'Ischemia' | 'Chronic_Ischemia' | 'Edema' | 'Mass';
-  probability: number; // Valore tra 0.0 e 1.0
-  threshold: number; // Soglia impostata a 0.5
+  probability: number; // valore tra 0.0 e 1.0
+  threshold: number; // soglia di decisione
   positive: boolean;
 }
 

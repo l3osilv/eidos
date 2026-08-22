@@ -57,7 +57,7 @@ export default function PatientDetail({
     }
   }, [patient.patient_id]);
 
-  // Calcolo coerenza locale sul client
+  // calcolo coerenza lato client
   useEffect(() => {
     if (patient.has_classification && patient.has_report && findings.length > 0 && reportText) {
       const reportLower = reportText.toLowerCase();

@@ -38,7 +38,7 @@ export default function App() {
     }
   }, [apiBaseUrl, currentUser?.username]);
 
-  // Auth guard
+  // controllo autenticazione
   useEffect(() => {
     if (!currentUser) {
       if (currentPath !== '/login' && currentPath !== '/register' && currentPath !== '/') {

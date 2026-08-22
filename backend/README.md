@@ -293,19 +293,3 @@ Le password vengono memorizzate sul database sotto forma di hash cifrati con alg
 Le slice tomografiche vengono salvate su filesystem in formato PNG privo di compressione con perdita nel percorso `storage/images/{patient_id}/`. Nel database MongoDB vengono memorizzati unicamente i percorsi relativi dei file.
 
 ---
-
-## Mappatura dei requisiti funzionali
-
-| Requisito | Descrizione | Endpoint |
-| --- | --- | --- |
-| **RF1.1** | Anagrafica paziente | `POST /patients` |
-| **RF1.2** | Caricamento 8 slice TC | `POST /patients` |
-| **RF2.1-2.4** | Classificazione patologie | `POST /patients/{id}/classify` |
-| **RF3.1** | Generazione bozza referto | `POST /patients/{id}/report` |
-| **RF3.2 / RF3.4** | Modifica e salvataggio referto | `PUT /patients/{id}/report` |
-| **RF4.1** | Controllo di coerenza | `GET /patients/{id}/coherence` |
-| **RF5.1-5.2** | Visualizzazione e navigazione slice | `GET /patients/{id}/slices/{i}` |
-| **RF5.3** | Validazione e firma referto | `POST /patients/{id}/validate` |
-| **RF6.1** | Registro pazienti e storico | `GET /patients` |
-| **RF6.2** | Esportazione referto (.txt) | `GET /patients/{id}/export` |
-| **RNF7.1** | Endpoint di diagnostica | `GET /health` |

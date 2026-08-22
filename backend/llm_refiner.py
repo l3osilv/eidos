@@ -1,6 +1,6 @@
 """
-Rifinitura linguistica del referto tramite API Groq (modelli LLaMA).
-Mantiene inalterato il significato clinico, modificando solo lo stile espositivo.
+rifinitura linguistica del referto tramite groq (modelli llama).
+mantiene inalterato il significato clinico modificando solo lo stile.
 """
 
 import logging
@@ -37,7 +37,7 @@ def _build_user_prompt(skeleton_text: str) -> str:
 
 
 def refine_report(skeleton_text: str) -> Optional[str]:
-    """Invia lo scheletro all'API Groq e ne ricava il testo rifinito."""
+    """invia lo scheletro all'api groq e ottiene il testo rifinito."""
     if not GROQ_API_KEY:
         logger.info("Rifinitura LLM disattivata (GROQ_API_KEY non impostata)")
         return None
@@ -76,7 +76,7 @@ def _extract_mentions(text: str, label: str) -> bool:
 
 
 def validate_refinement(refined_text: str, findings: List[dict]) -> bool:
-    """Verifica che tutte le patologie positive originarie siano ancora menzionate nel testo rifinito."""
+    """verifica che le patologie positive siano presenti anche nel testo rifinito."""
     for f in findings:
         if f["positive"] and not _extract_mentions(refined_text, f["label"]):
             logger.warning("Rifinitura non valida: persa menzione di %s", f["label"])

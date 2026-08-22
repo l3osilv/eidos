@@ -1,7 +1,7 @@
 """
-Connessione MongoDB asincrona (motor).
+connessione asincrona a mongodb tramite motor.
 
-Configurazione da .env:
+configurazione da .env:
   MONGODB_URL  (default: mongodb://localhost:27017)
   DB_NAME      (default: eidos)
 """
