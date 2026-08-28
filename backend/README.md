@@ -139,7 +139,7 @@ pip install -r requirements.txt
 
 ### 4. Posizionamento della repository SSL-BrainCT-Pathology
 
-Il backend importa i sorgenti di riferimento dalla repository [SSL-BrainCT-Pathology](https://github.com/l3osilv/SSL-BrainCT-Pathology). La struttura predefinita prevede le directory affiancate:
+Il backend importa i sorgenti di riferimento dalla repository [SSL-BrainCT-Pathology](https://github.com/meridtesfay/SSL-BrainCT-Pathology). La struttura predefinita prevede le directory affiancate:
 
 ```text
 Cartella_Progetti/
