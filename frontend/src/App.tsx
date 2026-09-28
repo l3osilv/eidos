@@ -222,7 +222,7 @@ export default function App() {
         <footer className="bg-slate-900 border-t border-slate-800 py-4 text-center text-[10px] font-mono text-slate-500">
           <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
             <span>© 2026 Leonardo Silvestri - Progetto di Tesi Triennale Università di Trento</span>
-            <span>Paolo Giorgini, Selene Tommasi, Merid Tesfay, Marco Robol</span>
+            <span>Paolo Giorgini, Marco Robol, Merid Tesfay, Selene Tomassini </span>
           </div>
         </footer>
       </div>
